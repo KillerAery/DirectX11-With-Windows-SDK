@@ -5,85 +5,101 @@
 using namespace DirectX;
 using namespace Microsoft::WRL;
 
-SkyRender::SkyRender(
-	ComPtr<ID3D11Device> device,
-	ComPtr<ID3D11DeviceContext> deviceContext,
-	const std::wstring & cubemapFilename,
-	float skySphereRadius,
-	bool generateMips)
-	: m_IndexCount()
+#pragma warning(disable: 26812)
+
+HRESULT SkyRender::InitResource(ID3D11Device* device, ID3D11DeviceContext* deviceContext, const std::wstring& cubemapFilename, float skySphereRadius, bool generateMips)
 {
-	// Ìì¿ÕºĞÎÆÀí¼ÓÔØ
+	// é˜²æ­¢é‡å¤åˆå§‹åŒ–é€ æˆå†…å­˜æ³„æ¼
+	m_pIndexBuffer.Reset();
+	m_pVertexBuffer.Reset();
+	m_pTextureCubeSRV.Reset();
+
+	HRESULT hr;
+	// å¤©ç©ºç›’çº¹ç†åŠ è½½
 	if (cubemapFilename.substr(cubemapFilename.size() - 3) == L"dds")
 	{
-		HR(CreateDDSTextureFromFile(
-			device.Get(),
-			generateMips ? deviceContext.Get() : nullptr,
+		hr = CreateDDSTextureFromFile(device,
+			generateMips ? deviceContext : nullptr,
 			cubemapFilename.c_str(),
 			nullptr,
-			m_pTextureCubeSRV.GetAddressOf()
-		));
+			m_pTextureCubeSRV.GetAddressOf());
 	}
 	else
 	{
-		HR(CreateWICTexture2DCubeFromFile(
-			device.Get(),
-			deviceContext.Get(),
+		hr = CreateWICTexture2DCubeFromFile(device,
+			deviceContext,
 			cubemapFilename,
 			nullptr,
 			m_pTextureCubeSRV.GetAddressOf(),
-			generateMips
-		));
+			generateMips);
 	}
 
-	InitResource(device, skySphereRadius);
+	if (hr != S_OK)
+		return hr;
+
+	return InitResource(device, skySphereRadius);
 }
 
-SkyRender::SkyRender(ComPtr<ID3D11Device> device,
-	ComPtr<ID3D11DeviceContext> deviceContext,
-	const std::vector<std::wstring>& cubemapFilenames,
-	float skySphereRadius,
-	bool generateMips)
-	: m_IndexCount()
+HRESULT SkyRender::InitResource(ID3D11Device* device, ID3D11DeviceContext* deviceContext, const std::vector<std::wstring>& cubemapFilenames, float skySphereRadius, bool generateMips)
 {
-	// Ìì¿ÕºĞÎÆÀí¼ÓÔØ
+	// é˜²æ­¢é‡å¤åˆå§‹åŒ–é€ æˆå†…å­˜æ³„æ¼
+	m_pIndexBuffer.Reset();
+	m_pVertexBuffer.Reset();
+	m_pTextureCubeSRV.Reset();
 
-	HR(CreateWICTexture2DCubeFromFile(
-		device.Get(),
-		deviceContext.Get(),
+	HRESULT hr;
+	// å¤©ç©ºç›’çº¹ç†åŠ è½½
+	hr = CreateWICTexture2DCubeFromFile(device,
+		deviceContext,
 		cubemapFilenames,
 		nullptr,
 		m_pTextureCubeSRV.GetAddressOf(),
-		generateMips
-	));
+		generateMips);
+	if (hr != S_OK)
+		return hr;
 
-	InitResource(device, skySphereRadius);
+	return InitResource(device, skySphereRadius);
 }
 
-ComPtr<ID3D11ShaderResourceView> SkyRender::GetTextureCube()
+ID3D11ShaderResourceView* SkyRender::GetTextureCube()
 {
-	return m_pTextureCubeSRV;
+	return m_pTextureCubeSRV.Get();
 }
 
-void SkyRender::Draw(ComPtr<ID3D11DeviceContext> deviceContext, SkyEffect & skyEffect, const Camera & camera)
+void SkyRender::Draw(ID3D11DeviceContext* deviceContext, SkyEffect& skyEffect, const Camera& camera)
 {
 	UINT strides[1] = { sizeof(XMFLOAT3) };
 	UINT offsets[1] = { 0 };
 	deviceContext->IASetVertexBuffers(0, 1, m_pVertexBuffer.GetAddressOf(), strides, offsets);
-	deviceContext->IASetIndexBuffer(m_pIndexBuffer.Get(), DXGI_FORMAT_R16_UINT, 0);
+	deviceContext->IASetIndexBuffer(m_pIndexBuffer.Get(), DXGI_FORMAT_R32_UINT, 0);
 
 	XMFLOAT3 pos = camera.GetPosition();
 	skyEffect.SetWorldViewProjMatrix(XMMatrixTranslation(pos.x, pos.y, pos.z) * camera.GetViewProjXM());
-	skyEffect.SetTextureCube(m_pTextureCubeSRV);
+	skyEffect.SetTextureCube(m_pTextureCubeSRV.Get());
 	skyEffect.Apply(deviceContext);
 	deviceContext->DrawIndexed(m_IndexCount, 0, 0);
 }
 
-void SkyRender::InitResource(ComPtr<ID3D11Device> device, float skySphereRadius)
+void SkyRender::SetDebugObjectName(const std::string& name)
 {
+#if (defined(DEBUG) || defined(_DEBUG)) && (GRAPHICS_DEBUGGER_OBJECT_NAME)
+	// å…ˆæ¸…ç©ºå¯èƒ½å­˜åœ¨çš„åç§°
+	D3D11SetDebugObjectName(m_pTextureCubeSRV.Get(), nullptr);
+
+	D3D11SetDebugObjectName(m_pTextureCubeSRV.Get(), name + ".CubeMapSRV");
+	D3D11SetDebugObjectName(m_pVertexBuffer.Get(), name + ".VertexBuffer");
+	D3D11SetDebugObjectName(m_pIndexBuffer.Get(), name + ".IndexBuffer");
+#else
+	UNREFERENCED_PARAMETER(name);
+#endif
+}
+
+HRESULT SkyRender::InitResource(ID3D11Device* device, float skySphereRadius)
+{
+	HRESULT hr;
 	auto sphere = Geometry::CreateSphere<VertexPos>(skySphereRadius);
 
-	// ¶¥µã»º³åÇø´´½¨
+	// é¡¶ç‚¹ç¼“å†²åŒºåˆ›å»º
 	D3D11_BUFFER_DESC vbd;
 	vbd.Usage = D3D11_USAGE_IMMUTABLE;
 	vbd.ByteWidth = sizeof(XMFLOAT3) * (UINT)sphere.vertexVec.size();
@@ -95,14 +111,16 @@ void SkyRender::InitResource(ComPtr<ID3D11Device> device, float skySphereRadius)
 	D3D11_SUBRESOURCE_DATA InitData;
 	InitData.pSysMem = sphere.vertexVec.data();
 
-	HR(device->CreateBuffer(&vbd, &InitData, &m_pVertexBuffer));
+	hr = device->CreateBuffer(&vbd, &InitData, &m_pVertexBuffer);
+	if (hr != S_OK)
+		return hr;
 
-	// Ë÷Òı»º³åÇø´´½¨
+	// ç´¢å¼•ç¼“å†²åŒºåˆ›å»º
 	m_IndexCount = (UINT)sphere.indexVec.size();
 
 	D3D11_BUFFER_DESC ibd;
 	ibd.Usage = D3D11_USAGE_IMMUTABLE;
-	ibd.ByteWidth = sizeof(WORD) * m_IndexCount;
+	ibd.ByteWidth = sizeof(DWORD) * m_IndexCount;
 	ibd.BindFlags = D3D11_BIND_INDEX_BUFFER;
 	ibd.CPUAccessFlags = 0;
 	ibd.StructureByteStride = 0;
@@ -110,6 +128,5 @@ void SkyRender::InitResource(ComPtr<ID3D11Device> device, float skySphereRadius)
 
 	InitData.pSysMem = sphere.indexVec.data();
 
-	HR(device->CreateBuffer(&ibd, &InitData, &m_pIndexBuffer));
-
+	return device->CreateBuffer(&ibd, &InitData, &m_pIndexBuffer);
 }

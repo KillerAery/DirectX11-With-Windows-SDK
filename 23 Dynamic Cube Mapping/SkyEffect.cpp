@@ -1,21 +1,20 @@
 #include "Effects.h"
 #include "d3dUtil.h"
-#include "EffectHelper.h"	// ±ØĞëÍíÓÚEffects.hºÍd3dUtil.h°üº¬
+#include "EffectHelper.h"	// å¿…é¡»æ™šäºEffects.hå’Œd3dUtil.håŒ…å«
 #include "DXTrace.h"
 #include "Vertex.h"
 using namespace DirectX;
-using namespace std::experimental;
 
 
 //
-// SkyEffect::Impl ĞèÒªÏÈÓÚSkyEffectµÄ¶¨Òå
+// SkyEffect::Impl éœ€è¦å…ˆäºSkyEffectçš„å®šä¹‰
 //
 
 class SkyEffect::Impl : public AlignedType<SkyEffect::Impl>
 {
 public:
 	//
-	// ÕâĞ©½á¹¹Ìå¶ÔÓ¦HLSLµÄ½á¹¹Ìå£¬½ö¹©¸ÃÎÄ¼şÊ¹ÓÃ¡£ĞèÒª°´16×Ö½Ú¶ÔÆë
+	// è¿™äº›ç»“æ„ä½“å¯¹åº”HLSLçš„ç»“æ„ä½“ï¼Œä»…ä¾›è¯¥æ–‡ä»¶ä½¿ç”¨ã€‚éœ€è¦æŒ‰16å­—èŠ‚å¯¹é½
 	//
 
 	struct CBChangesEveryFrame
@@ -24,22 +23,22 @@ public:
 	};
 
 public:
-	// ±ØĞëÏÔÊ½Ö¸¶¨
+	// å¿…é¡»æ˜¾å¼æŒ‡å®š
 	Impl() : m_IsDirty() {}
 	~Impl() = default;
 
 public:
-	CBufferObject<0, CBChangesEveryFrame>	m_CBFrame;	        // Ã¿Ö¡»æÖÆµÄ³£Á¿»º³åÇø
+	CBufferObject<0, CBChangesEveryFrame>	m_CBFrame;	        // æ¯å¸§ç»˜åˆ¶çš„å¸¸é‡ç¼“å†²åŒº
 
-	BOOL m_IsDirty;										        // ÊÇ·ñÓĞÖµ±ä¸ü
-	std::vector<CBufferBase*> m_pCBuffers;				        // Í³Ò»¹ÜÀíÉÏÃæËùÓĞµÄ³£Á¿»º³åÇø
+	BOOL m_IsDirty;										        // æ˜¯å¦æœ‰å€¼å˜æ›´
+	std::vector<CBufferBase*> m_pCBuffers;				        // ç»Ÿä¸€ç®¡ç†ä¸Šé¢æ‰€æœ‰çš„å¸¸é‡ç¼“å†²åŒº
 
 	ComPtr<ID3D11VertexShader> m_pSkyVS;
 	ComPtr<ID3D11PixelShader> m_pSkyPS;
 
 	ComPtr<ID3D11InputLayout> m_pVertexPosLayout;
 
-	ComPtr<ID3D11ShaderResourceView> m_pTextureCube;			// Ìì¿ÕºĞÎÆÀí
+	ComPtr<ID3D11ShaderResourceView> m_pTextureCube;			// å¤©ç©ºç›’çº¹ç†
 };
 
 //
@@ -48,7 +47,7 @@ public:
 
 namespace
 {
-	// SkyEffectµ¥Àı
+	// SkyEffectå•ä¾‹
 	static SkyEffect * g_pInstance = nullptr;
 }
 
@@ -82,7 +81,7 @@ SkyEffect & SkyEffect::Get()
 	return *g_pInstance;
 }
 
-bool SkyEffect::InitAll(ComPtr<ID3D11Device> device)
+bool SkyEffect::InitAll(ID3D11Device * device)
 {
 	if (!device)
 		return false;
@@ -96,17 +95,17 @@ bool SkyEffect::InitAll(ComPtr<ID3D11Device> device)
 	ComPtr<ID3DBlob> blob;
 	
 	// ******************
-	// ´´½¨¶¥µã×ÅÉ«Æ÷
+	// åˆ›å»ºé¡¶ç‚¹ç€è‰²å™¨
 	//
 
 	HR(CreateShaderFromFile(L"HLSL\\Sky_VS.cso", L"HLSL\\Sky_VS.hlsl", "VS", "vs_5_0", blob.ReleaseAndGetAddressOf()));
 	HR(device->CreateVertexShader(blob->GetBufferPointer(), blob->GetBufferSize(), nullptr, pImpl->m_pSkyVS.GetAddressOf()));
-	// ´´½¨¶¥µã²¼¾Ö
+	// åˆ›å»ºé¡¶ç‚¹å¸ƒå±€
 	HR(device->CreateInputLayout(VertexPos::inputLayout, ARRAYSIZE(VertexPos::inputLayout),
 		blob->GetBufferPointer(), blob->GetBufferSize(), pImpl->m_pVertexPosLayout.GetAddressOf()));
 
 	// ******************
-	// ´´½¨ÏñËØ×ÅÉ«Æ÷
+	// åˆ›å»ºåƒç´ ç€è‰²å™¨
 	//
 
 	HR(CreateShaderFromFile(L"HLSL\\Sky_PS.cso", L"HLSL\\Sky_PS.hlsl", "PS", "ps_5_0", blob.ReleaseAndGetAddressOf()));
@@ -117,16 +116,22 @@ bool SkyEffect::InitAll(ComPtr<ID3D11Device> device)
 		&pImpl->m_CBFrame,
 	});
 
-	// ´´½¨³£Á¿»º³åÇø
+	// åˆ›å»ºå¸¸é‡ç¼“å†²åŒº
 	for (auto& pBuffer : pImpl->m_pCBuffers)
 	{
 		HR(pBuffer->CreateBuffer(device));
 	}
 
+	// è®¾ç½®è°ƒè¯•å¯¹è±¡å
+	D3D11SetDebugObjectName(pImpl->m_pVertexPosLayout.Get(), "SkyEffect.VertexPosTexLayout");
+	D3D11SetDebugObjectName(pImpl->m_pCBuffers[0]->cBuffer.Get(), "SkyEffect.CBFrame");
+	D3D11SetDebugObjectName(pImpl->m_pSkyVS.Get(), "SkyEffect.Sky_VS");
+	D3D11SetDebugObjectName(pImpl->m_pSkyPS.Get(), "SkyEffect.Sky_PS");
+
 	return true;
 }
 
-void SkyEffect::SetRenderDefault(ComPtr<ID3D11DeviceContext> deviceContext)
+void SkyEffect::SetRenderDefault(ID3D11DeviceContext * deviceContext)
 {
 	deviceContext->IASetInputLayout(pImpl->m_pVertexPosLayout.Get());
 	deviceContext->VSSetShader(pImpl->m_pSkyVS.Get(), nullptr, 0);
@@ -156,18 +161,18 @@ void XM_CALLCONV SkyEffect::SetWorldViewProjMatrix(DirectX::FXMMATRIX WVP)
 	pImpl->m_IsDirty = cBuffer.isDirty = true;
 }
 
-void SkyEffect::SetTextureCube(ComPtr<ID3D11ShaderResourceView> m_pTextureCube)
+void SkyEffect::SetTextureCube(ID3D11ShaderResourceView * m_pTextureCube)
 {
 	pImpl->m_pTextureCube = m_pTextureCube;
 }
 
-void SkyEffect::Apply(ComPtr<ID3D11DeviceContext> deviceContext)
+void SkyEffect::Apply(ID3D11DeviceContext * deviceContext)
 {
 	auto& pCBuffers = pImpl->m_pCBuffers;
-	// ½«»º³åÇø°ó¶¨µ½äÖÈ¾¹ÜÏßÉÏ
+	// å°†ç¼“å†²åŒºç»‘å®šåˆ°æ¸²æŸ“ç®¡çº¿ä¸Š
 	pCBuffers[0]->BindVS(deviceContext);
 	
-	// ÉèÖÃSRV
+	// è®¾ç½®SRV
 	deviceContext->PSSetShaderResources(0, 1, pImpl->m_pTextureCube.GetAddressOf());
 
 	if (pImpl->m_IsDirty)

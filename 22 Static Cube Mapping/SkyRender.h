@@ -1,8 +1,8 @@
 //***************************************************************************************
-// SkyRender.h by X_Jun(MKXJun) (C) 2018-2019 All Rights Reserved.
+// SkyRender.h by X_Jun(MKXJun) (C) 2018-2020 All Rights Reserved.
 // Licensed under the MIT License.
 //
-// Ìì¿ÕºĞ¼ÓÔØÓëäÖÈ¾Àà
+// å¤©ç©ºç›’åŠ è½½ä¸æ¸²æŸ“ç±»
 // Skybox loader and render classes.
 //***************************************************************************************
 
@@ -20,29 +20,39 @@ public:
 	template<class T>
 	using ComPtr = Microsoft::WRL::ComPtr<T>;
 
-
-	// ĞèÒªÌá¹©ÍêÕûµÄÌì¿ÕºĞÌùÍ¼ »òÕß ÒÑ¾­´´½¨ºÃµÄÌì¿ÕºĞÎÆÀí.ddsÎÄ¼ş
-	SkyRender(ComPtr<ID3D11Device> device, 
-		ComPtr<ID3D11DeviceContext> deviceContext, 
-		const std::wstring& cubemapFilename, 
-		float skySphereRadius,		// Ìì¿ÕÇò°ë¾¶
-		bool generateMips = false);	// Ä¬ÈÏ²»Îª¾²Ì¬Ìì¿ÕºĞÉú³Émipmaps
-
-
-	// ĞèÒªÌá¹©Ìì¿ÕºĞµÄÁùÕÅÕı·½ĞÎÌùÍ¼
-	SkyRender(ComPtr<ID3D11Device> device, 
-		ComPtr<ID3D11DeviceContext> deviceContext, 
-		const std::vector<std::wstring>& cubemapFilenames, 
-		float skySphereRadius,		// Ìì¿ÕÇò°ë¾¶
-		bool generateMips = false);	// Ä¬ÈÏ²»Îª¾²Ì¬Ìì¿ÕºĞÉú³Émipmaps
+	SkyRender() = default;
+	~SkyRender() = default;
+	// ä¸å…è®¸æ‹·è´ï¼Œå…è®¸ç§»åŠ¨
+	SkyRender(const SkyRender&) = delete;
+	SkyRender& operator=(const SkyRender&) = delete;
+	SkyRender(SkyRender&&) = default;
+	SkyRender& operator=(SkyRender&&) = default;
 
 
-	ComPtr<ID3D11ShaderResourceView> GetTextureCube();
+	// éœ€è¦æä¾›å®Œæ•´çš„å¤©ç©ºç›’è´´å›¾ æˆ–è€… å·²ç»åˆ›å»ºå¥½çš„å¤©ç©ºç›’çº¹ç†.ddsæ–‡ä»¶
+	HRESULT InitResource(ID3D11Device* device,
+		ID3D11DeviceContext* deviceContext,
+		const std::wstring& cubemapFilename,
+		float skySphereRadius,		// å¤©ç©ºçƒåŠå¾„
+		bool generateMips = false);	// é»˜è®¤ä¸ä¸ºé™æ€å¤©ç©ºç›’ç”Ÿæˆmipmaps
 
-	void Draw(ComPtr<ID3D11DeviceContext> deviceContext, SkyEffect& skyEffect, const Camera& camera);
+	// éœ€è¦æä¾›å¤©ç©ºç›’çš„å…­å¼ æ­£æ–¹å½¢è´´å›¾
+	HRESULT InitResource(ID3D11Device* device,
+		ID3D11DeviceContext* deviceContext,
+		const std::vector<std::wstring>& cubemapFilenames,
+		float skySphereRadius,		// å¤©ç©ºçƒåŠå¾„
+		bool generateMips = false);	// é»˜è®¤ä¸ä¸ºé™æ€å¤©ç©ºç›’ç”Ÿæˆmipmaps
+
+	ID3D11ShaderResourceView* GetTextureCube();
+
+	void Draw(ID3D11DeviceContext* deviceContext, SkyEffect& skyEffect, const Camera& camera);
+
+	// è®¾ç½®è°ƒè¯•å¯¹è±¡å
+	void SetDebugObjectName(const std::string& name);
 
 private:
-	void InitResource(ComPtr<ID3D11Device> device, float skySphereRadius);
+	HRESULT InitResource(ID3D11Device* device, float skySphereRadius);
+
 
 private:
 	ComPtr<ID3D11Buffer> m_pVertexBuffer;

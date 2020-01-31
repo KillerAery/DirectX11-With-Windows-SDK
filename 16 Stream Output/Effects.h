@@ -1,8 +1,8 @@
 //***************************************************************************************
-// Effects.h by X_Jun(MKXJun) (C) 2018-2019 All Rights Reserved.
+// Effects.h by X_Jun(MKXJun) (C) 2018-2020 All Rights Reserved.
 // Licensed under the MIT License.
 //
-// ¼òÒ×ÌØĞ§¹ÜÀí¿ò¼Ü
+// ç®€æ˜“ç‰¹æ•ˆç®¡ç†æ¡†æ¶
 // Simple effect management framework.
 //***************************************************************************************
 
@@ -16,24 +16,24 @@
 class IEffect
 {
 public:
-	// Ê¹ÓÃÄ£°å±ğÃû(C++11)¼ò»¯ÀàĞÍÃû
+	// ä½¿ç”¨æ¨¡æ¿åˆ«å(C++11)ç®€åŒ–ç±»å‹å
 	template <class T>
 	using ComPtr = Microsoft::WRL::ComPtr<T>;
 
 	IEffect() = default;
 
-	// ²»Ö§³Ö¸´ÖÆ¹¹Ôì
+	// ä¸æ”¯æŒå¤åˆ¶æ„é€ 
 	IEffect(const IEffect&) = delete;
 	IEffect& operator=(const IEffect&) = delete;
 
-	// ÔÊĞí×ªÒÆ
+	// å…è®¸è½¬ç§»
 	IEffect(IEffect&& moveFrom) = default;
 	IEffect& operator=(IEffect&& moveFrom) = default;
 
 	virtual ~IEffect() = default;
 
-	// ¸üĞÂ²¢°ó¶¨³£Á¿»º³åÇø
-	virtual void Apply(ComPtr<ID3D11DeviceContext> deviceContext) = 0;
+	// æ›´æ–°å¹¶ç»‘å®šå¸¸é‡ç¼“å†²åŒº
+	virtual void Apply(ID3D11DeviceContext * deviceContext) = 0;
 };
 
 
@@ -47,38 +47,38 @@ public:
 	BasicEffect(BasicEffect&& moveFrom) noexcept;
 	BasicEffect& operator=(BasicEffect&& moveFrom) noexcept;
 
-	// »ñÈ¡µ¥Àı
+	// è·å–å•ä¾‹
 	static BasicEffect& Get();
 
 	
 
-	// ³õÊ¼»¯Basic.hlsliËùĞè×ÊÔ´²¢³õÊ¼»¯äÖÈ¾×´Ì¬
-	bool InitAll(ComPtr<ID3D11Device> device);
+	// åˆå§‹åŒ–Basic.hlsliæ‰€éœ€èµ„æºå¹¶åˆå§‹åŒ–æ¸²æŸ“çŠ¶æ€
+	bool InitAll(ID3D11Device * device);
 
 
 	//
-	// äÖÈ¾Ä£Ê½µÄ±ä¸ü
+	// æ¸²æŸ“æ¨¡å¼çš„å˜æ›´
 	//
 
-	// »æÖÆÈı½ÇĞÎ·ÖĞÎ
-	void SetRenderSplitedTriangle(ComPtr<ID3D11DeviceContext> deviceContext);
-	// »æÖÆÑ©»¨
-	void SetRenderSplitedSnow(ComPtr<ID3D11DeviceContext> deviceContext);
-	// »æÖÆÇòÌå
-	void SetRenderSplitedSphere(ComPtr<ID3D11DeviceContext> deviceContext);
-	// Í¨¹ıÁ÷Êä³ö½×¶Î»ñÈ¡Èı½ÇĞÎ·ÖÁÑµÄÏÂÒ»½×·ÖĞÎ
-	void SetStreamOutputSplitedTriangle(ComPtr<ID3D11DeviceContext> deviceContext, ComPtr<ID3D11Buffer> vertexBufferIn, ComPtr<ID3D11Buffer> vertexBufferOut);
-	// Í¨¹ıÁ÷Êä³ö½×¶Î»ñÈ¡Ñ©»¨µÄÏÂÒ»½×·ÖĞÎ
-	void SetStreamOutputSplitedSnow(ComPtr<ID3D11DeviceContext> deviceContext, ComPtr<ID3D11Buffer> vertexBufferIn, ComPtr<ID3D11Buffer> vertexBufferOut);
-	// Í¨¹ıÁ÷Êä³ö½×¶Î»ñÈ¡ÇòµÄÏÂÒ»½×·ÖĞÎ
-	void SetStreamOutputSplitedSphere(ComPtr<ID3D11DeviceContext> deviceContext, ComPtr<ID3D11Buffer> vertexBufferIn, ComPtr<ID3D11Buffer> vertexBufferOut);
+	// ç»˜åˆ¶ä¸‰è§’å½¢åˆ†å½¢
+	void SetRenderSplitedTriangle(ID3D11DeviceContext * deviceContext);
+	// ç»˜åˆ¶é›ªèŠ±
+	void SetRenderSplitedSnow(ID3D11DeviceContext * deviceContext);
+	// ç»˜åˆ¶çƒä½“
+	void SetRenderSplitedSphere(ID3D11DeviceContext * deviceContext);
+	// é€šè¿‡æµè¾“å‡ºé˜¶æ®µè·å–ä¸‰è§’å½¢åˆ†è£‚çš„ä¸‹ä¸€é˜¶åˆ†å½¢
+	void SetStreamOutputSplitedTriangle(ID3D11DeviceContext * deviceContext, ID3D11Buffer * vertexBufferIn, ID3D11Buffer * vertexBufferOut);
+	// é€šè¿‡æµè¾“å‡ºé˜¶æ®µè·å–é›ªèŠ±çš„ä¸‹ä¸€é˜¶åˆ†å½¢
+	void SetStreamOutputSplitedSnow(ID3D11DeviceContext * deviceContext, ID3D11Buffer * vertexBufferIn, ID3D11Buffer * vertexBufferOut);
+	// é€šè¿‡æµè¾“å‡ºé˜¶æ®µè·å–çƒçš„ä¸‹ä¸€é˜¶åˆ†å½¢
+	void SetStreamOutputSplitedSphere(ID3D11DeviceContext * deviceContext, ID3D11Buffer * vertexBufferIn, ID3D11Buffer * vertexBufferOut);
 
-	// »æÖÆËùÓĞ¶¥µãµÄ·¨ÏòÁ¿
-	void SetRenderNormal(ComPtr<ID3D11DeviceContext> deviceContext);
+	// ç»˜åˆ¶æ‰€æœ‰é¡¶ç‚¹çš„æ³•å‘é‡
+	void SetRenderNormal(ID3D11DeviceContext * deviceContext);
 
 
 	//
-	// ¾ØÕóÉèÖÃ
+	// çŸ©é˜µè®¾ç½®
 	//
 
 	void XM_CALLCONV SetWorldMatrix(DirectX::FXMMATRIX W);
@@ -87,10 +87,10 @@ public:
 
 	
 	//
-	// ¹âÕÕ¡¢²ÄÖÊºÍÎÆÀíÏà¹ØÉèÖÃ
+	// å…‰ç…§ã€æè´¨å’Œçº¹ç†ç›¸å…³è®¾ç½®
 	//
 
-	// ¸÷ÖÖÀàĞÍµÆ¹âÔÊĞíµÄ×î´óÊıÄ¿
+	// å„ç§ç±»å‹ç¯å…‰å…è®¸çš„æœ€å¤§æ•°ç›®
 	static const int maxLights = 5;
 
 	void SetDirLight(size_t pos, const DirectionalLight& dirLight);
@@ -104,14 +104,14 @@ public:
 	void XM_CALLCONV SetEyePos(DirectX::FXMVECTOR eyePos);
 
 	//
-	// ÉèÖÃÇòÌå
+	// è®¾ç½®çƒä½“
 	//
 
 	void SetSphereCenter(const DirectX::XMFLOAT3& center);
 	void SetSphereRadius(float radius);
 
-	// Ó¦ÓÃ³£Á¿»º³åÇøºÍÎÆÀí×ÊÔ´µÄ±ä¸ü
-	void Apply(ComPtr<ID3D11DeviceContext> deviceContext);
+	// åº”ç”¨å¸¸é‡ç¼“å†²åŒºå’Œçº¹ç†èµ„æºçš„å˜æ›´
+	void Apply(ID3D11DeviceContext * deviceContext);
 	
 private:
 	class Impl;

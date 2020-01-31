@@ -1,14 +1,13 @@
 #include "ObjReader.h"
 
 using namespace DirectX;
-using namespace std::experimental;
-bool ObjReader::Read(const wchar_t * mboFileName, const wchar_t * objFileName)
+bool ObjReader::Read(const wchar_t* mboFileName, const wchar_t* objFileName)
 {
-	if (mboFileName && filesystem::exists(mboFileName))
+	if (mboFileName && ReadMbo(mboFileName))
 	{
-		return ReadMbo(mboFileName);
+		return true;
 	}
-	else if (objFileName && filesystem::exists(objFileName))
+	else if (objFileName)
 	{
 		bool status = ReadObj(objFileName);
 		if (status && mboFileName)
@@ -19,7 +18,7 @@ bool ObjReader::Read(const wchar_t * mboFileName, const wchar_t * objFileName)
 	return false;
 }
 
-bool ObjReader::ReadObj(const wchar_t * objFileName)
+bool ObjReader::ReadObj(const wchar_t* objFileName)
 {
 	objParts.clear();
 	vertexCache.clear();
@@ -33,7 +32,10 @@ bool ObjReader::ReadObj(const wchar_t * objFileName)
 	XMVECTOR vecMin = g_XMInfinity, vecMax = g_XMNegInfinity;
 
 	std::wifstream wfin(objFileName);
-	// ÇĞ»»ÖĞÎÄ
+	if (!wfin.is_open())
+		return false;
+
+	// åˆ‡æ¢ä¸­æ–‡
 	std::locale china("chs");
 	china = wfin.imbue(china);
 	for (;;)
@@ -45,7 +47,7 @@ bool ObjReader::ReadObj(const wchar_t * objFileName)
 		if (wstr[0] == '#')
 		{
 			//
-			// ºöÂÔ×¢ÊÍËùÔÚĞĞ
+			// å¿½ç•¥æ³¨é‡Šæ‰€åœ¨è¡Œ
 			//
 			while (!wfin.eof() && wfin.get() != '\n')
 				continue;
@@ -53,10 +55,10 @@ bool ObjReader::ReadObj(const wchar_t * objFileName)
 		else if (wstr == L"o" || wstr == L"g")
 		{
 			// 
-			// ¶ÔÏóÃû(×éÃû)
+			// å¯¹è±¡å(ç»„å)
 			//
 			objParts.emplace_back(ObjPart());
-			// Ìá¹©Ä¬ÈÏ²ÄÖÊ
+			// æä¾›é»˜è®¤æè´¨
 			objParts.back().material.ambient = XMFLOAT4(0.2f, 0.2f, 0.2f, 1.0f);
 			objParts.back().material.diffuse = XMFLOAT4(0.8f, 0.8f, 0.8f, 1.0f);
 			objParts.back().material.specular = XMFLOAT4(1.0f, 1.0f, 1.0f, 1.0f);
@@ -66,11 +68,11 @@ bool ObjReader::ReadObj(const wchar_t * objFileName)
 		else if (wstr == L"v")
 		{
 			//
-			// ¶¥µãÎ»ÖÃ
+			// é¡¶ç‚¹ä½ç½®
 			//
 
-			// ×¢ÒâobjÊ¹ÓÃµÄÊÇÓÒÊÖ×ø±êÏµ£¬¶ø²»ÊÇ×óÊÖ×ø±êÏµ
-			// ĞèÒª½«zÖµ·´×ª
+			// æ³¨æ„objä½¿ç”¨çš„æ˜¯å³æ‰‹åæ ‡ç³»ï¼Œè€Œä¸æ˜¯å·¦æ‰‹åæ ‡ç³»
+			// éœ€è¦å°†zå€¼åè½¬
 			XMFLOAT3 pos;
 			wfin >> pos.x >> pos.y >> pos.z;
 			pos.z = -pos.z;
@@ -82,10 +84,10 @@ bool ObjReader::ReadObj(const wchar_t * objFileName)
 		else if (wstr == L"vt")
 		{
 			//
-			// ¶¥µãÎÆÀí×ø±ê
+			// é¡¶ç‚¹çº¹ç†åæ ‡
 			//
 
-			// ×¢ÒâobjÊ¹ÓÃµÄÊÇµÑ¿¨¶û×ø±êÏµ£¬¶ø²»ÊÇÎÆÀí×ø±êÏµ
+			// æ³¨æ„objä½¿ç”¨çš„æ˜¯ç¬›å¡å°”åæ ‡ç³»ï¼Œè€Œä¸æ˜¯çº¹ç†åæ ‡ç³»
 			float u, v;
 			wfin >> u >> v;
 			v = 1.0f - v;
@@ -94,11 +96,11 @@ bool ObjReader::ReadObj(const wchar_t * objFileName)
 		else if (wstr == L"vn")
 		{
 			//
-			// ¶¥µã·¨ÏòÁ¿
+			// é¡¶ç‚¹æ³•å‘é‡
 			//
 
-			// ×¢ÒâobjÊ¹ÓÃµÄÊÇÓÒÊÖ×ø±êÏµ£¬¶ø²»ÊÇ×óÊÖ×ø±êÏµ
-			// ĞèÒª½«zÖµ·´×ª
+			// æ³¨æ„objä½¿ç”¨çš„æ˜¯å³æ‰‹åæ ‡ç³»ï¼Œè€Œä¸æ˜¯å·¦æ‰‹åæ ‡ç³»
+			// éœ€è¦å°†zå€¼åè½¬
 			float x, y, z;
 			wfin >> x >> y >> z;
 			z = -z;
@@ -107,18 +109,18 @@ bool ObjReader::ReadObj(const wchar_t * objFileName)
 		else if (wstr == L"mtllib")
 		{
 			//
-			// Ö¸¶¨Ä³Ò»ÎÄ¼şµÄ²ÄÖÊ
+			// æŒ‡å®šæŸä¸€æ–‡ä»¶çš„æè´¨
 			//
 			std::wstring mtlFile;
 			wfin >> mtlFile;
-			// È¥µôÇ°ºó¿Õ¸ñ
+			// å»æ‰å‰åç©ºæ ¼
 			size_t beg = 0, ed = mtlFile.size();
 			while (iswspace(mtlFile[beg]))
 				beg++;
-			while (ed > beg && iswspace(mtlFile[ed - 1]))
+			while (ed > beg&& iswspace(mtlFile[ed - 1]))
 				ed--;
 			mtlFile = mtlFile.substr(beg, ed - beg);
-			// »ñÈ¡Â·¾¶
+			// è·å–è·¯å¾„
 			std::wstring dir = objFileName;
 			size_t pos;
 			if ((pos = dir.find_last_of('/')) == std::wstring::npos &&
@@ -130,22 +132,22 @@ bool ObjReader::ReadObj(const wchar_t * objFileName)
 			{
 				pos += 1;
 			}
-				
+
 
 			mtlReader.ReadMtl((dir.erase(pos) + mtlFile).c_str());
 		}
 		else if (wstr == L"usemtl")
 		{
 			//
-			// Ê¹ÓÃÖ®Ç°Ö¸¶¨ÎÄ¼şÄÚ²¿µÄÄ³Ò»²ÄÖÊ
+			// ä½¿ç”¨ä¹‹å‰æŒ‡å®šæ–‡ä»¶å†…éƒ¨çš„æŸä¸€æè´¨
 			//
 			std::wstring mtlName;
 			std::getline(wfin, mtlName);
-			// È¥µôÇ°ºó¿Õ¸ñ
+			// å»æ‰å‰åç©ºæ ¼
 			size_t beg = 0, ed = mtlName.size();
 			while (iswspace(mtlName[beg]))
 				beg++;
-			while (ed > beg && iswspace(mtlName[ed - 1]))
+			while (ed > beg&& iswspace(mtlName[ed - 1]))
 				ed--;
 			mtlName = mtlName.substr(beg, ed - beg);
 
@@ -155,15 +157,15 @@ bool ObjReader::ReadObj(const wchar_t * objFileName)
 		else if (wstr == L"f")
 		{
 			//
-			// ¼¸ºÎÃæ
+			// å‡ ä½•é¢
 			//
 			VertexPosNormalTex vertex;
 			DWORD vpi[3], vni[3], vti[3];
 			wchar_t ignore;
 
-			// ¶¥µãÎ»ÖÃË÷Òı/ÎÆÀí×ø±êË÷Òı/·¨ÏòÁ¿Ë÷Òı
-			// Ô­À´ÓÒÊÖ×ø±êÏµÏÂ¶¥µãË³ĞòÊÇÄæÊ±ÕëÅÅ²¼
-			// ÏÖÔÚĞèÒª×ª±äÎª×óÊÖ×ø±êÏµ¾ÍĞèÒª½«Èı½ÇĞÎ¶¥µã·´¹ıÀ´ÊäÈë
+			// é¡¶ç‚¹ä½ç½®ç´¢å¼•/çº¹ç†åæ ‡ç´¢å¼•/æ³•å‘é‡ç´¢å¼•
+			// åŸæ¥å³æ‰‹åæ ‡ç³»ä¸‹é¡¶ç‚¹é¡ºåºæ˜¯é€†æ—¶é’ˆæ’å¸ƒ
+			// ç°åœ¨éœ€è¦è½¬å˜ä¸ºå·¦æ‰‹åæ ‡ç³»å°±éœ€è¦å°†ä¸‰è§’å½¢é¡¶ç‚¹åè¿‡æ¥è¾“å…¥
 			for (int i = 2; i >= 0; --i)
 			{
 				wfin >> vpi[i] >> ignore >> vti[i] >> ignore >> vni[i];
@@ -176,17 +178,17 @@ bool ObjReader::ReadObj(const wchar_t * objFileName)
 				vertex.tex = texCoords[vti[i] - 1];
 				AddVertex(vertex, vpi[i], vti[i], vni[i]);
 			}
-			
+
 
 			while (iswblank(wfin.peek()))
 				wfin.get();
-			// ¼¸ºÎÃæ¶¥µãÊı¿ÉÄÜ³¬¹ıÁË3£¬²»Ö§³Ö¸Ã¸ñÊ½
+			// å‡ ä½•é¢é¡¶ç‚¹æ•°å¯èƒ½è¶…è¿‡äº†3ï¼Œä¸æ”¯æŒè¯¥æ ¼å¼
 			if (wfin.peek() != '\n')
 				return false;
 		}
 	}
 
-	// ¶¥µãÊı²»³¬¹ıWORDµÄ×î´óÖµµÄ»°¾ÍÊ¹ÓÃ16Î»WORD´æ´¢
+	// é¡¶ç‚¹æ•°ä¸è¶…è¿‡WORDçš„æœ€å¤§å€¼çš„è¯å°±ä½¿ç”¨16ä½WORDå­˜å‚¨
 	for (auto& part : objParts)
 	{
 		if (part.vertices.size() < 65535)
@@ -205,18 +207,18 @@ bool ObjReader::ReadObj(const wchar_t * objFileName)
 	return true;
 }
 
-bool ObjReader::ReadMbo(const wchar_t * mboFileName)
+bool ObjReader::ReadMbo(const wchar_t* mboFileName)
 {
-	// [PartÊıÄ¿] 4×Ö½Ú
-	// [AABBºĞ¶¥µãvMax] 12×Ö½Ú
-	// [AABBºĞ¶¥µãvMin] 12×Ö½Ú
+	// [Partæ•°ç›®] 4å­—èŠ‚
+	// [AABBç›’é¡¶ç‚¹vMax] 12å­—èŠ‚
+	// [AABBç›’é¡¶ç‚¹vMin] 12å­—èŠ‚
 	// [Part
-	//   [ÂşÉä¹â²ÄÖÊÎÄ¼şÃû]520×Ö½Ú
-	//   [²ÄÖÊ]64×Ö½Ú
-	//   [¶¥µãÊı]4×Ö½Ú
-	//   [Ë÷ÒıÊı]4×Ö½Ú
-	//   [¶¥µã]32*¶¥µãÊı ×Ö½Ú
-	//   [Ë÷Òı]2(»ò4)*Ë÷ÒıÊı ×Ö½Ú£¬È¡¾öÓÚ¶¥µãÊıÊÇ·ñ²»³¬¹ı65535
+	//   [æ¼«å°„å…‰æè´¨æ–‡ä»¶å]520å­—èŠ‚
+	//   [æè´¨]64å­—èŠ‚
+	//   [é¡¶ç‚¹æ•°]4å­—èŠ‚
+	//   [ç´¢å¼•æ•°]4å­—èŠ‚
+	//   [é¡¶ç‚¹]32*é¡¶ç‚¹æ•° å­—èŠ‚
+	//   [ç´¢å¼•]2(æˆ–4)*ç´¢å¼•æ•° å­—èŠ‚ï¼Œå–å†³äºé¡¶ç‚¹æ•°æ˜¯å¦ä¸è¶…è¿‡65535
 	// ]
 	// ...
 	std::ifstream fin(mboFileName, std::ios::in | std::ios::binary);
@@ -224,42 +226,42 @@ bool ObjReader::ReadMbo(const wchar_t * mboFileName)
 		return false;
 
 	UINT parts = (UINT)objParts.size();
-	// [PartÊıÄ¿] 4×Ö½Ú
+	// [Partæ•°ç›®] 4å­—èŠ‚
 	fin.read(reinterpret_cast<char*>(&parts), sizeof(UINT));
 	objParts.resize(parts);
 
-	// [AABBºĞ¶¥µãvMax] 12×Ö½Ú
+	// [AABBç›’é¡¶ç‚¹vMax] 12å­—èŠ‚
 	fin.read(reinterpret_cast<char*>(&vMax), sizeof(XMFLOAT3));
-	// [AABBºĞ¶¥µãvMin] 12×Ö½Ú
+	// [AABBç›’é¡¶ç‚¹vMin] 12å­—èŠ‚
 	fin.read(reinterpret_cast<char*>(&vMin), sizeof(XMFLOAT3));
 
 
 	for (UINT i = 0; i < parts; ++i)
 	{
 		wchar_t filePath[MAX_PATH];
-		// [ÂşÉä¹â²ÄÖÊÎÄ¼şÃû]520×Ö½Ú
+		// [æ¼«å°„å…‰æè´¨æ–‡ä»¶å]520å­—èŠ‚
 		fin.read(reinterpret_cast<char*>(filePath), MAX_PATH * sizeof(wchar_t));
 		objParts[i].texStrDiffuse = filePath;
-		// [²ÄÖÊ]64×Ö½Ú
+		// [æè´¨]64å­—èŠ‚
 		fin.read(reinterpret_cast<char*>(&objParts[i].material), sizeof(Material));
 		UINT vertexCount, indexCount;
-		// [¶¥µãÊı]4×Ö½Ú
+		// [é¡¶ç‚¹æ•°]4å­—èŠ‚
 		fin.read(reinterpret_cast<char*>(&vertexCount), sizeof(UINT));
-		// [Ë÷ÒıÊı]4×Ö½Ú
+		// [ç´¢å¼•æ•°]4å­—èŠ‚
 		fin.read(reinterpret_cast<char*>(&indexCount), sizeof(UINT));
-		// [¶¥µã]32*¶¥µãÊı ×Ö½Ú
+		// [é¡¶ç‚¹]32*é¡¶ç‚¹æ•° å­—èŠ‚
 		objParts[i].vertices.resize(vertexCount);
 		fin.read(reinterpret_cast<char*>(objParts[i].vertices.data()), vertexCount * sizeof(VertexPosNormalTex));
 
 		if (vertexCount > 65535)
 		{
-			// [Ë÷Òı]4*Ë÷ÒıÊı ×Ö½Ú
+			// [ç´¢å¼•]4*ç´¢å¼•æ•° å­—èŠ‚
 			objParts[i].indices32.resize(indexCount);
 			fin.read(reinterpret_cast<char*>(objParts[i].indices32.data()), indexCount * sizeof(DWORD));
 		}
 		else
 		{
-			// [Ë÷Òı]2*Ë÷ÒıÊı ×Ö½Ú
+			// [ç´¢å¼•]2*ç´¢å¼•æ•° å­—èŠ‚
 			objParts[i].indices16.resize(indexCount);
 			fin.read(reinterpret_cast<char*>(objParts[i].indices16.data()), indexCount * sizeof(WORD));
 		}
@@ -270,29 +272,29 @@ bool ObjReader::ReadMbo(const wchar_t * mboFileName)
 	return true;
 }
 
-bool ObjReader::WriteMbo(const wchar_t * mboFileName)
+bool ObjReader::WriteMbo(const wchar_t* mboFileName)
 {
-	// [PartÊıÄ¿] 4×Ö½Ú
-	// [AABBºĞ¶¥µãvMax] 12×Ö½Ú
-	// [AABBºĞ¶¥µãvMin] 12×Ö½Ú
+	// [Partæ•°ç›®] 4å­—èŠ‚
+	// [AABBç›’é¡¶ç‚¹vMax] 12å­—èŠ‚
+	// [AABBç›’é¡¶ç‚¹vMin] 12å­—èŠ‚
 	// [Part
-	//   [»·¾³¹â²ÄÖÊÎÄ¼şÃû]520×Ö½Ú
-	//   [ÂşÉä¹â²ÄÖÊÎÄ¼şÃû]520×Ö½Ú
-	//   [²ÄÖÊ]64×Ö½Ú
-	//   [¶¥µãÊı]4×Ö½Ú
-	//   [Ë÷ÒıÊı]4×Ö½Ú
-	//   [¶¥µã]32*¶¥µãÊı ×Ö½Ú
-	//   [Ë÷Òı]2(»ò4)*Ë÷ÒıÊı ×Ö½Ú£¬È¡¾öÓÚ¶¥µãÊıÊÇ·ñ²»³¬¹ı65535
+	//   [ç¯å¢ƒå…‰æè´¨æ–‡ä»¶å]520å­—èŠ‚
+	//   [æ¼«å°„å…‰æè´¨æ–‡ä»¶å]520å­—èŠ‚
+	//   [æè´¨]64å­—èŠ‚
+	//   [é¡¶ç‚¹æ•°]4å­—èŠ‚
+	//   [ç´¢å¼•æ•°]4å­—èŠ‚
+	//   [é¡¶ç‚¹]32*é¡¶ç‚¹æ•° å­—èŠ‚
+	//   [ç´¢å¼•]2(æˆ–4)*ç´¢å¼•æ•° å­—èŠ‚ï¼Œå–å†³äºé¡¶ç‚¹æ•°æ˜¯å¦ä¸è¶…è¿‡65535
 	// ]
 	// ...
 	std::ofstream fout(mboFileName, std::ios::out | std::ios::binary);
 	UINT parts = (UINT)objParts.size();
-	// [PartÊıÄ¿] 4×Ö½Ú
+	// [Partæ•°ç›®] 4å­—èŠ‚
 	fout.write(reinterpret_cast<const char*>(&parts), sizeof(UINT));
 
-	// [AABBºĞ¶¥µãvMax] 12×Ö½Ú
+	// [AABBç›’é¡¶ç‚¹vMax] 12å­—èŠ‚
 	fout.write(reinterpret_cast<const char*>(&vMax), sizeof(XMFLOAT3));
-	// [AABBºĞ¶¥µãvMin] 12×Ö½Ú
+	// [AABBç›’é¡¶ç‚¹vMin] 12å­—èŠ‚
 	fout.write(reinterpret_cast<const char*>(&vMin), sizeof(XMFLOAT3));
 
 	// [Part
@@ -300,33 +302,33 @@ bool ObjReader::WriteMbo(const wchar_t * mboFileName)
 	{
 		wchar_t filePath[MAX_PATH];
 		wcscpy_s(filePath, objParts[i].texStrDiffuse.c_str());
-		// [ÂşÉä¹â²ÄÖÊÎÄ¼şÃû]520×Ö½Ú
+		// [æ¼«å°„å…‰æè´¨æ–‡ä»¶å]520å­—èŠ‚
 		fout.write(reinterpret_cast<const char*>(filePath), MAX_PATH * sizeof(wchar_t));
-		// [²ÄÖÊ]64×Ö½Ú
+		// [æè´¨]64å­—èŠ‚
 		fout.write(reinterpret_cast<const char*>(&objParts[i].material), sizeof(Material));
 		UINT vertexCount = (UINT)objParts[i].vertices.size();
-		// [¶¥µãÊı]4×Ö½Ú
+		// [é¡¶ç‚¹æ•°]4å­—èŠ‚
 		fout.write(reinterpret_cast<const char*>(&vertexCount), sizeof(UINT));
 
 		UINT indexCount;
 		if (vertexCount > 65535)
 		{
 			indexCount = (UINT)objParts[i].indices32.size();
-			// [Ë÷ÒıÊı]4×Ö½Ú
+			// [ç´¢å¼•æ•°]4å­—èŠ‚
 			fout.write(reinterpret_cast<const char*>(&indexCount), sizeof(UINT));
-			// [¶¥µã]32*¶¥µãÊı ×Ö½Ú
+			// [é¡¶ç‚¹]32*é¡¶ç‚¹æ•° å­—èŠ‚
 			fout.write(reinterpret_cast<const char*>(objParts[i].vertices.data()), vertexCount * sizeof(VertexPosNormalTex));
-			// [Ë÷Òı]4*Ë÷ÒıÊı ×Ö½Ú
+			// [ç´¢å¼•]4*ç´¢å¼•æ•° å­—èŠ‚
 			fout.write(reinterpret_cast<const char*>(objParts[i].indices32.data()), indexCount * sizeof(DWORD));
 		}
 		else
 		{
 			indexCount = (UINT)objParts[i].indices16.size();
-			// [Ë÷ÒıÊı]4×Ö½Ú
+			// [ç´¢å¼•æ•°]4å­—èŠ‚
 			fout.write(reinterpret_cast<const char*>(&indexCount), sizeof(UINT));
-			// [¶¥µã]32*¶¥µãÊı ×Ö½Ú
+			// [é¡¶ç‚¹]32*é¡¶ç‚¹æ•° å­—èŠ‚
 			fout.write(reinterpret_cast<const char*>(objParts[i].vertices.data()), vertexCount * sizeof(VertexPosNormalTex));
-			// [Ë÷Òı]2*Ë÷ÒıÊı ×Ö½Ú
+			// [ç´¢å¼•]2*ç´¢å¼•æ•° å­—èŠ‚
 			fout.write(reinterpret_cast<const char*>(objParts[i].indices16.data()), indexCount * sizeof(WORD));
 		}
 	}
@@ -340,7 +342,7 @@ void ObjReader::AddVertex(const VertexPosNormalTex& vertex, DWORD vpi, DWORD vti
 {
 	std::wstring idxStr = std::to_wstring(vpi) + L"/" + std::to_wstring(vti) + L"/" + std::to_wstring(vni);
 
-	// Ñ°ÕÒÊÇ·ñÓĞÖØ¸´¶¥µã
+	// å¯»æ‰¾æ˜¯å¦æœ‰é‡å¤é¡¶ç‚¹
 	auto it = vertexCache.find(idxStr);
 	if (it != vertexCache.end())
 	{
@@ -357,7 +359,7 @@ void ObjReader::AddVertex(const VertexPosNormalTex& vertex, DWORD vpi, DWORD vti
 
 
 
-bool MtlReader::ReadMtl(const wchar_t * mtlFileName)
+bool MtlReader::ReadMtl(const wchar_t* mtlFileName)
 {
 	materials.clear();
 	mapKdStrs.clear();
@@ -381,7 +383,7 @@ bool MtlReader::ReadMtl(const wchar_t * mtlFileName)
 		if (wstr[0] == '#')
 		{
 			//
-			// ºöÂÔ×¢ÊÍËùÔÚĞĞ
+			// å¿½ç•¥æ³¨é‡Šæ‰€åœ¨è¡Œ
 			//
 			while (wfin.get() != '\n')
 				continue;
@@ -389,22 +391,22 @@ bool MtlReader::ReadMtl(const wchar_t * mtlFileName)
 		else if (wstr == L"newmtl")
 		{
 			//
-			// ĞÂ²ÄÖÊ
+			// æ–°æè´¨
 			//
 
 			std::getline(wfin, currMtl);
-			// È¥µôÇ°ºó¿Õ¸ñ
+			// å»æ‰å‰åç©ºæ ¼
 			size_t beg = 0, ed = currMtl.size();
 			while (iswspace(currMtl[beg]))
 				beg++;
-			while (ed > beg && iswspace(currMtl[ed - 1]))
+			while (ed > beg&& iswspace(currMtl[ed - 1]))
 				ed--;
 			currMtl = currMtl.substr(beg, ed - beg);
 		}
 		else if (wstr == L"Ka")
 		{
 			//
-			// »·¾³¹â·´ÉäÑÕÉ«
+			// ç¯å¢ƒå…‰åå°„é¢œè‰²
 			//
 			XMFLOAT4& ambient = materials[currMtl].ambient;
 			wfin >> ambient.x >> ambient.y >> ambient.z;
@@ -414,7 +416,7 @@ bool MtlReader::ReadMtl(const wchar_t * mtlFileName)
 		else if (wstr == L"Kd")
 		{
 			//
-			// ÂşÉä¹â·´ÉäÑÕÉ«
+			// æ¼«å°„å…‰åå°„é¢œè‰²
 			//
 			XMFLOAT4& diffuse = materials[currMtl].diffuse;
 			wfin >> diffuse.x >> diffuse.y >> diffuse.z;
@@ -424,7 +426,7 @@ bool MtlReader::ReadMtl(const wchar_t * mtlFileName)
 		else if (wstr == L"Ks")
 		{
 			//
-			// ¾µÃæ¹â·´ÉäÑÕÉ«
+			// é•œé¢å…‰åå°„é¢œè‰²
 			//
 			XMFLOAT4& specular = materials[currMtl].specular;
 			wfin >> specular.x >> specular.y >> specular.z;
@@ -432,14 +434,14 @@ bool MtlReader::ReadMtl(const wchar_t * mtlFileName)
 		else if (wstr == L"Ns")
 		{
 			//
-			// ¾µÃæÏµÊı
+			// é•œé¢ç³»æ•°
 			//
 			wfin >> materials[currMtl].specular.w;
 		}
 		else if (wstr == L"d" || wstr == L"Tr")
 		{
 			//
-			// dÎª²»Í¸Ã÷¶È TrÎªÍ¸Ã÷¶È
+			// dä¸ºä¸é€æ˜åº¦ Trä¸ºé€æ˜åº¦
 			//
 			float alpha;
 			wfin >> alpha;
@@ -451,19 +453,19 @@ bool MtlReader::ReadMtl(const wchar_t * mtlFileName)
 		else if (wstr == L"map_Kd")
 		{
 			//
-			// map_KdÎªÂş·´ÉäÊ¹ÓÃµÄÎÆÀí
+			// map_Kdä¸ºæ¼«åå°„ä½¿ç”¨çš„çº¹ç†
 			//
 			std::wstring fileName;
 			std::getline(wfin, fileName);
-			// È¥µôÇ°ºó¿Õ¸ñ
+			// å»æ‰å‰åç©ºæ ¼
 			size_t beg = 0, ed = fileName.size();
 			while (iswspace(fileName[beg]))
 				beg++;
-			while (ed > beg && iswspace(fileName[ed - 1]))
+			while (ed > beg&& iswspace(fileName[ed - 1]))
 				ed--;
 			fileName = fileName.substr(beg, ed - beg);
 
-			// ×·¼ÓÂ·¾¶
+			// è¿½åŠ è·¯å¾„
 			std::wstring dir = mtlFileName;
 			size_t pos;
 			if ((pos = dir.find_last_of('/')) == std::wstring::npos &&

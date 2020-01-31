@@ -2,13 +2,13 @@
 #include "d3dUtil.h"
 #include "DXTrace.h"
 using namespace DirectX;
-using namespace std::experimental;
 
 GameApp::GameApp(HINSTANCE hInstance)
 	: D3DApp(hInstance),
 	m_CameraMode(CameraMode::Free),
 	m_GroundMode(GroundMode::Floor),
-	m_EnableNormalMap(true)
+	m_EnableNormalMap(true),
+	m_SphereRad()
 {
 }
 
@@ -21,19 +21,19 @@ bool GameApp::Init()
 	if (!D3DApp::Init())
 		return false;
 
-	// Îñ±ØÏÈ³õÊ¼»¯ËùÓĞäÖÈ¾×´Ì¬£¬ÒÔ¹©ÏÂÃæµÄÌØĞ§Ê¹ÓÃ
-	RenderStates::InitAll(m_pd3dDevice);
+	// åŠ¡å¿…å…ˆåˆå§‹åŒ–æ‰€æœ‰æ¸²æŸ“çŠ¶æ€ï¼Œä»¥ä¾›ä¸‹é¢çš„ç‰¹æ•ˆä½¿ç”¨
+	RenderStates::InitAll(m_pd3dDevice.Get());
 
-	if (!m_BasicEffect.InitAll(m_pd3dDevice))
+	if (!m_BasicEffect.InitAll(m_pd3dDevice.Get()))
 		return false;
 
-	if (!m_SkyEffect.InitAll(m_pd3dDevice))
+	if (!m_SkyEffect.InitAll(m_pd3dDevice.Get()))
 		return false;
 
 	if (!InitResource())
 		return false;
 
-	// ³õÊ¼»¯Êó±ê£¬¼üÅÌ²»ĞèÒª
+	// åˆå§‹åŒ–é¼ æ ‡ï¼Œé”®ç›˜ä¸éœ€è¦
 	m_pMouse->SetWindow(m_hMainWnd);
 	m_pMouse->SetMode(DirectX::Mouse::MODE_RELATIVE);
 
@@ -44,13 +44,13 @@ void GameApp::OnResize()
 {
 	assert(m_pd2dFactory);
 	assert(m_pdwriteFactory);
-	// ÊÍ·ÅD2DµÄÏà¹Ø×ÊÔ´
+	// é‡Šæ”¾D2Dçš„ç›¸å…³èµ„æº
 	m_pColorBrush.Reset();
 	m_pd2dRenderTarget.Reset();
 
 	D3DApp::OnResize();
 
-	// ÎªD2D´´½¨DXGI±íÃæäÖÈ¾Ä¿±ê
+	// ä¸ºD2Dåˆ›å»ºDXGIè¡¨é¢æ¸²æŸ“ç›®æ ‡
 	ComPtr<IDXGISurface> surface;
 	HR(m_pSwapChain->GetBuffer(0, __uuidof(IDXGISurface), reinterpret_cast<void**>(surface.GetAddressOf())));
 	D2D1_RENDER_TARGET_PROPERTIES props = D2D1::RenderTargetProperties(
@@ -61,29 +61,29 @@ void GameApp::OnResize()
 
 	if (hr == E_NOINTERFACE)
 	{
-		OutputDebugString(L"\n¾¯¸æ£ºDirect2DÓëDirect3D»¥²Ù×÷ĞÔ¹¦ÄÜÊÜÏŞ£¬Äã½«ÎŞ·¨¿´µ½ÎÄ±¾ĞÅÏ¢¡£ÏÖÌá¹©ÏÂÊö¿ÉÑ¡·½·¨£º\n"
-			"1. ¶ÔÓÚWin7ÏµÍ³£¬ĞèÒª¸üĞÂÖÁWin7 SP1£¬²¢°²×°KB2670838²¹¶¡ÒÔÖ§³ÖDirect2DÏÔÊ¾¡£\n"
-			"2. ×ÔĞĞÍê³ÉDirect3D 10.1ÓëDirect2DµÄ½»»¥¡£ÏêÇé²ÎÔÄ£º"
-			"https://docs.microsoft.com/zh-cn/windows/desktop/Direct2D/direct2d-and-direct3d-interoperation-overview""\n"
-			"3. Ê¹ÓÃ±ğµÄ×ÖÌå¿â£¬±ÈÈçFreeType¡£\n\n");
+		OutputDebugStringW(L"\nè­¦å‘Šï¼šDirect2Dä¸Direct3Däº’æ“ä½œæ€§åŠŸèƒ½å—é™ï¼Œä½ å°†æ— æ³•çœ‹åˆ°æ–‡æœ¬ä¿¡æ¯ã€‚ç°æä¾›ä¸‹è¿°å¯é€‰æ–¹æ³•ï¼š\n"
+			L"1. å¯¹äºWin7ç³»ç»Ÿï¼Œéœ€è¦æ›´æ–°è‡³Win7 SP1ï¼Œå¹¶å®‰è£…KB2670838è¡¥ä¸ä»¥æ”¯æŒDirect2Dæ˜¾ç¤ºã€‚\n"
+			L"2. è‡ªè¡Œå®ŒæˆDirect3D 10.1ä¸Direct2Dçš„äº¤äº’ã€‚è¯¦æƒ…å‚é˜…ï¼š"
+			L"https://docs.microsoft.com/zh-cn/windows/desktop/Direct2D/direct2d-and-direct3d-interoperation-overview""\n"
+			L"3. ä½¿ç”¨åˆ«çš„å­—ä½“åº“ï¼Œæ¯”å¦‚FreeTypeã€‚\n\n");
 	}
 	else if (hr == S_OK)
 	{
-		// ´´½¨¹Ì¶¨ÑÕÉ«Ë¢ºÍÎÄ±¾¸ñÊ½
+		// åˆ›å»ºå›ºå®šé¢œè‰²åˆ·å’Œæ–‡æœ¬æ ¼å¼
 		HR(m_pd2dRenderTarget->CreateSolidColorBrush(
 			D2D1::ColorF(D2D1::ColorF::White),
 			m_pColorBrush.GetAddressOf()));
-		HR(m_pdwriteFactory->CreateTextFormat(L"ËÎÌå", nullptr, DWRITE_FONT_WEIGHT_NORMAL,
+		HR(m_pdwriteFactory->CreateTextFormat(L"å®‹ä½“", nullptr, DWRITE_FONT_WEIGHT_NORMAL,
 			DWRITE_FONT_STYLE_NORMAL, DWRITE_FONT_STRETCH_NORMAL, 15, L"zh-cn",
 			m_pTextFormat.GetAddressOf()));
 	}
 	else
 	{
-		// ±¨¸æÒì³£ÎÊÌâ
+		// æŠ¥å‘Šå¼‚å¸¸é—®é¢˜
 		assert(m_pd2dRenderTarget);
 	}
 
-	// ÉãÏñ»ú±ä¸üÏÔÊ¾
+	// æ‘„åƒæœºå˜æ›´æ˜¾ç¤º
 	if (m_pCamera != nullptr)
 	{
 		m_pCamera->SetFrustum(XM_PI / 3, AspectRatio(), 1.0f, 1000.0f);
@@ -95,7 +95,7 @@ void GameApp::OnResize()
 void GameApp::UpdateScene(float dt)
 {
 
-	// ¸üĞÂÊó±êÊÂ¼ş£¬»ñÈ¡Ïà¶ÔÆ«ÒÆÁ¿
+	// æ›´æ–°é¼ æ ‡äº‹ä»¶ï¼Œè·å–ç›¸å¯¹åç§»é‡
 	Mouse::State mouseState = m_pMouse->GetState();
 	Mouse::State lastMouseState = m_MouseTracker.GetLastState();
 	m_MouseTracker.Update(mouseState);
@@ -105,11 +105,11 @@ void GameApp::UpdateScene(float dt)
 
 	auto cam1st = std::dynamic_pointer_cast<FirstPersonCamera>(m_pCamera);
 
-	// ********************
-	// ×ÔÓÉÉãÏñ»úµÄ²Ù×÷
+	// ******************
+	// è‡ªç”±æ‘„åƒæœºçš„æ“ä½œ
 	//
 
-	// ·½ÏòÒÆ¶¯
+	// æ–¹å‘ç§»åŠ¨
 	if (keyState.IsKeyDown(Keyboard::W))
 		cam1st->MoveForward(dt * 3.0f);
 	if (keyState.IsKeyDown(Keyboard::S))
@@ -119,20 +119,20 @@ void GameApp::UpdateScene(float dt)
 	if (keyState.IsKeyDown(Keyboard::D))
 		cam1st->Strafe(dt * 3.0f);
 
-	// ÊÓÒ°Ğı×ª£¬·ÀÖ¹¿ªÊ¼µÄ²îÖµ¹ı´óµ¼ÖÂµÄÍ»È»Ğı×ª
+	// è§†é‡æ—‹è½¬ï¼Œé˜²æ­¢å¼€å§‹çš„å·®å€¼è¿‡å¤§å¯¼è‡´çš„çªç„¶æ—‹è½¬
 	cam1st->Pitch(mouseState.y * dt * 1.25f);
 	cam1st->RotateY(mouseState.x * dt * 1.25f);
 
-	// ¸üĞÂ¹Û²ì¾ØÕó
+	// æ›´æ–°è§‚å¯ŸçŸ©é˜µ
 	m_pCamera->UpdateViewMatrix();
 	m_BasicEffect.SetViewMatrix(m_pCamera->GetViewXM());
 	m_BasicEffect.SetEyePos(m_pCamera->GetPositionXM());
 
-	// ·¨ÏßÌùÍ¼¿ª¹Ø
+	// æ³•çº¿è´´å›¾å¼€å…³
 	if (m_KeyboardTracker.IsKeyPressed(Keyboard::D1))
 		m_EnableNormalMap = !m_EnableNormalMap;
 		
-	// ÇĞ»»µØÃæÎÆÀí
+	// åˆ‡æ¢åœ°é¢çº¹ç†
 	if (m_KeyboardTracker.IsKeyPressed(Keyboard::D2) && m_GroundMode != GroundMode::Floor)
 	{
 		m_GroundMode = GroundMode::Floor;
@@ -150,10 +150,13 @@ void GameApp::UpdateScene(float dt)
 		m_GroundT.SetModel(m_GroundTModel);
 	}
 
-	// ÖØÖÃ¹öÂÖÖµ
+	// è®¾ç½®çƒä½“åŠ¨ç”»é€Ÿåº¦
+	m_SphereRad += 2.0f * dt;
+
+	// é‡ç½®æ»šè½®å€¼
 	m_pMouse->ResetScrollWheelValue();
 
-	// ÍË³ö³ÌĞò£¬ÕâÀïÓ¦Ïò´°¿Ú·¢ËÍÏú»ÙĞÅÏ¢
+	// é€€å‡ºç¨‹åºï¼Œè¿™é‡Œåº”å‘çª—å£å‘é€é”€æ¯ä¿¡æ¯
 	if (m_KeyboardTracker.IsKeyPressed(Keyboard::Escape))
 		SendMessage(MainWnd(), WM_DESTROY, 0, 0);
 }
@@ -164,50 +167,50 @@ void GameApp::DrawScene()
 	assert(m_pSwapChain);
 
 	// ******************
-	// Éú³É¶¯Ì¬Ìì¿ÕºĞ
+	// ç”ŸæˆåŠ¨æ€å¤©ç©ºç›’
 	//
 
-	// ±£Áôµ±Ç°»æÖÆµÄäÖÈ¾Ä¿±êÊÓÍ¼ºÍÉî¶ÈÄ£°åÊÓÍ¼
-	m_pDaylight->Cache(m_pd3dImmediateContext, m_BasicEffect);
+	// ä¿ç•™å½“å‰ç»˜åˆ¶çš„æ¸²æŸ“ç›®æ ‡è§†å›¾å’Œæ·±åº¦æ¨¡æ¿è§†å›¾
+	m_pDaylight->Cache(m_pd3dImmediateContext.Get(), m_BasicEffect);
 
-	// »æÖÆ¶¯Ì¬Ìì¿ÕºĞµÄÃ¿¸öÃæ£¨ÒÔÇòÌåÎªÖĞĞÄ£©
+	// ç»˜åˆ¶åŠ¨æ€å¤©ç©ºç›’çš„æ¯ä¸ªé¢ï¼ˆä»¥çƒä½“ä¸ºä¸­å¿ƒï¼‰
 	for (int i = 0; i < 6; ++i)
 	{
 		m_pDaylight->BeginCapture(
-			m_pd3dImmediateContext, m_BasicEffect, XMFLOAT3(), static_cast<D3D11_TEXTURECUBE_FACE>(i));
+			m_pd3dImmediateContext.Get(), m_BasicEffect, XMFLOAT3(), static_cast<D3D11_TEXTURECUBE_FACE>(i));
 
-		// ²»»æÖÆÖĞĞÄÇò
+		// ä¸ç»˜åˆ¶ä¸­å¿ƒçƒ
 		DrawScene(false);
 	}
 
-	// »Ö¸´Ö®Ç°µÄ»æÖÆÉè¶¨
-	m_pDaylight->Restore(m_pd3dImmediateContext, m_BasicEffect, *m_pCamera);
+	// æ¢å¤ä¹‹å‰çš„ç»˜åˆ¶è®¾å®š
+	m_pDaylight->Restore(m_pd3dImmediateContext.Get(), m_BasicEffect, *m_pCamera);
 	
 	// ******************
-	// »æÖÆ³¡¾°
+	// ç»˜åˆ¶åœºæ™¯
 	//
 
-	// Ô¤ÏÈÇå¿Õ
+	// é¢„å…ˆæ¸…ç©º
 	m_pd3dImmediateContext->ClearRenderTargetView(m_pRenderTargetView.Get(), reinterpret_cast<const float*>(&Colors::Black));
 	m_pd3dImmediateContext->ClearDepthStencilView(m_pDepthStencilView.Get(), D3D11_CLEAR_DEPTH | D3D11_CLEAR_STENCIL, 1.0f, 0);
 
-	// »æÖÆÖĞĞÄÇò
+	// ç»˜åˆ¶ä¸­å¿ƒçƒ
 	DrawScene(true);
 	
 
 	// ******************
-	// »æÖÆDirect2D²¿·Ö
+	// ç»˜åˆ¶Direct2Déƒ¨åˆ†
 	//
 	if (m_pd2dRenderTarget != nullptr)
 	{
 		m_pd2dRenderTarget->BeginDraw();
-		std::wstring text = L"µ±Ç°ÉãÏñ»úÄ£Ê½: ×ÔÓÉÊÓ½Ç  EscÍË³ö\n"
-			"Êó±êÒÆ¶¯¿ØÖÆÊÓÒ° W/S/A/DÒÆ¶¯\n"
-			"1-·¨ÏßÌùÍ¼: ";
-		text += m_EnableNormalMap ? L"¿ªÆô\n" : L"¹Ø±Õ\n";
-		text += L"ÇĞ»»ÎÆÀí: 2-µØ°å  3-¶ìÂÑÊ¯Ãæ\n"
-			"µ±Ç°ÎÆÀí: ";
-		text += (m_GroundMode == GroundMode::Floor ? L"µØ°å" : L"¶ìÂÑÊ¯Ãæ");
+		std::wstring text = L"å½“å‰æ‘„åƒæœºæ¨¡å¼: è‡ªç”±è§†è§’  Escé€€å‡º\n"
+			L"é¼ æ ‡ç§»åŠ¨æ§åˆ¶è§†é‡ W/S/A/Dç§»åŠ¨\n"
+			L"1-æ³•çº¿è´´å›¾: ";
+		text += m_EnableNormalMap ? L"å¼€å¯\n" : L"å…³é—­\n";
+		text += L"åˆ‡æ¢çº¹ç†: 2-åœ°æ¿  3-é¹…åµçŸ³é¢\n"
+			L"å½“å‰çº¹ç†: ";
+		text += (m_GroundMode == GroundMode::Floor ? L"åœ°æ¿" : L"é¹…åµçŸ³é¢");
 
 		m_pd2dRenderTarget->DrawTextW(text.c_str(), (UINT32)text.length(), m_pTextFormat.Get(),
 			D2D1_RECT_F{ 0.0f, 0.0f, 600.0f, 200.0f }, m_pColorBrush.Get());
@@ -222,48 +225,46 @@ void GameApp::DrawScene()
 bool GameApp::InitResource()
 {
 	// ******************
-	// ³õÊ¼»¯·¨ÏßÌùÍ¼Ïà¹Ø
+	// åˆå§‹åŒ–æ³•çº¿è´´å›¾ç›¸å…³
 	//
 	HR(CreateDDSTextureFromFile(m_pd3dDevice.Get(), L"Texture\\bricks_nmap.dds", nullptr, m_BricksNormalMap.GetAddressOf()));
 	HR(CreateDDSTextureFromFile(m_pd3dDevice.Get(), L"Texture\\floor_nmap.dds", nullptr, m_FloorNormalMap.GetAddressOf()));
 	HR(CreateDDSTextureFromFile(m_pd3dDevice.Get(), L"Texture\\stones_nmap.dds", nullptr, m_StonesNormalMap.GetAddressOf()));
 
 	// ******************
-	// ³õÊ¼»¯Ìì¿ÕºĞÏà¹Ø
+	// åˆå§‹åŒ–å¤©ç©ºç›’ç›¸å…³
 
-	m_pDaylight = std::make_unique<DynamicSkyRender>(
-		m_pd3dDevice, m_pd3dImmediateContext, 
+	m_pDaylight = std::make_unique<DynamicSkyRender>();
+	HR(m_pDaylight->InitResource(m_pd3dDevice.Get(), m_pd3dImmediateContext.Get(),
 		L"Texture\\daylight.jpg", 
-		5000.0f, 256);
+		5000.0f, 256));
 
 	m_BasicEffect.SetTextureCube(m_pDaylight->GetDynamicTextureCube());
 
 	// ******************
-	// ³õÊ¼»¯ÓÎÏ·¶ÔÏó
+	// åˆå§‹åŒ–æ¸¸æˆå¯¹è±¡
 	//
 	HR(CreateDDSTextureFromFile(m_pd3dDevice.Get(), L"Texture\\floor.dds", nullptr, m_FloorDiffuse.GetAddressOf()));
 	HR(CreateDDSTextureFromFile(m_pd3dDevice.Get(), L"Texture\\stones.dds", nullptr, m_StonesDiffuse.GetAddressOf()));
-	// µØÃæ
-	m_GroundModel.SetMesh(m_pd3dDevice,
-		Geometry::CreatePlane(XMFLOAT3(0.0f, -3.0f, 0.0f), XMFLOAT2(16.0f, 16.0f), XMFLOAT2(8.0f, 8.0f)));
+	// åœ°é¢
+	m_GroundModel.SetMesh(m_pd3dDevice.Get(), Geometry::CreatePlane(XMFLOAT2(16.0f, 16.0f), XMFLOAT2(8.0f, 8.0f)));
 	m_GroundModel.modelParts[0].material.ambient = XMFLOAT4(0.2f, 0.2f, 0.2f, 1.0f);
 	m_GroundModel.modelParts[0].material.diffuse = XMFLOAT4(0.8f, 0.8f, 0.8f, 1.0f);
 	m_GroundModel.modelParts[0].material.specular = XMFLOAT4(0.2f, 0.2f, 0.2f, 16.0f);
-	m_GroundModel.modelParts[0].material.Reflect = XMFLOAT4();
+	m_GroundModel.modelParts[0].material.reflect = XMFLOAT4();
 	m_GroundModel.modelParts[0].texDiffuse = m_FloorDiffuse;
 	m_Ground.SetModel(m_GroundModel);
-
-	// ´øÇĞÏßÏòÁ¿µÄµØÃæ
-	m_GroundTModel.SetMesh(m_pd3dDevice, Geometry::CreatePlane<VertexPosNormalTangentTex>(
-		XMFLOAT3(0.0f, -3.0f, 0.0f), XMFLOAT2(16.0f, 16.0f), XMFLOAT2(8.0f, 8.0f)));
+	m_Ground.SetWorldMatrix(XMMatrixTranslation(0.0f, -3.0f, 0.0f));
+	// å¸¦åˆ‡çº¿å‘é‡çš„åœ°é¢
+	m_GroundTModel.SetMesh(m_pd3dDevice.Get(), Geometry::CreatePlane<VertexPosNormalTangentTex>(XMFLOAT2(16.0f, 16.0f), XMFLOAT2(8.0f, 8.0f)));
 	m_GroundTModel.modelParts[0].material.ambient = XMFLOAT4(0.2f, 0.2f, 0.2f, 1.0f);
 	m_GroundTModel.modelParts[0].material.diffuse = XMFLOAT4(0.8f, 0.8f, 0.8f, 1.0f);
 	m_GroundTModel.modelParts[0].material.specular = XMFLOAT4(0.2f, 0.2f, 0.2f, 16.0f);
-	m_GroundTModel.modelParts[0].material.Reflect = XMFLOAT4();
+	m_GroundTModel.modelParts[0].material.reflect = XMFLOAT4();
 	m_GroundTModel.modelParts[0].texDiffuse = m_FloorDiffuse;
 	m_GroundT.SetModel(m_GroundTModel);
-
-	// ÇòÌå
+	m_GroundT.SetWorldMatrix(XMMatrixTranslation(0.0f, -3.0f, 0.0f));
+	// çƒä½“
 	Model model;
 	ComPtr<ID3D11ShaderResourceView> texDiffuse;
 
@@ -272,41 +273,44 @@ bool GameApp::InitResource()
 		nullptr,
 		texDiffuse.GetAddressOf()));
 
-	model.SetMesh(m_pd3dDevice, Geometry::CreateSphere(1.0f, 30, 30));
+	model.SetMesh(m_pd3dDevice.Get(), Geometry::CreateSphere(1.0f, 30, 30));
 	model.modelParts[0].material.ambient = XMFLOAT4(0.2f, 0.2f, 0.2f, 1.0f);
 	model.modelParts[0].material.diffuse = XMFLOAT4(0.5f, 0.5f, 0.5f, 1.0f);
 	model.modelParts[0].material.specular = XMFLOAT4(0.8f, 0.8f, 0.8f, 16.0f);
-	model.modelParts[0].material.Reflect = XMFLOAT4(0.8f, 0.8f, 0.8f, 1.0f);
+	model.modelParts[0].material.reflect = XMFLOAT4(0.8f, 0.8f, 0.8f, 1.0f);
 	model.modelParts[0].texDiffuse = texDiffuse;
 	m_Sphere.SetModel(std::move(model));
+	m_Sphere.ResizeBuffer(m_pd3dDevice.Get(), 5);
 
-	// ÖùÌå
+	// æŸ±ä½“
 	HR(CreateDDSTextureFromFile(m_pd3dDevice.Get(),
 		L"Texture\\bricks.dds",
 		nullptr,
 		texDiffuse.ReleaseAndGetAddressOf()));
 
-	model.SetMesh(m_pd3dDevice,
+	model.SetMesh(m_pd3dDevice.Get(),
 		Geometry::CreateCylinder(0.5f, 2.0f));
 	model.modelParts[0].material.ambient = XMFLOAT4(0.2f, 0.2f, 0.2f, 1.0f);
 	model.modelParts[0].material.diffuse = XMFLOAT4(0.8f, 0.8f, 0.8f, 1.0f);
 	model.modelParts[0].material.specular = XMFLOAT4(0.2f, 0.2f, 0.2f, 16.0f);
-	model.modelParts[0].material.Reflect = XMFLOAT4();
+	model.modelParts[0].material.reflect = XMFLOAT4();
 	model.modelParts[0].texDiffuse = texDiffuse;
 	m_Cylinder.SetModel(std::move(model));
+	m_Cylinder.ResizeBuffer(m_pd3dDevice.Get(), 5);
 
-	// ´øÇĞÏßÏòÁ¿µÄÖùÌå
-	model.SetMesh(m_pd3dDevice,
+	// å¸¦åˆ‡çº¿å‘é‡çš„æŸ±ä½“
+	model.SetMesh(m_pd3dDevice.Get(),
 		Geometry::CreateCylinder<VertexPosNormalTangentTex>(0.5f, 2.0f));
 	model.modelParts[0].material.ambient = XMFLOAT4(0.2f, 0.2f, 0.2f, 1.0f);
 	model.modelParts[0].material.diffuse = XMFLOAT4(0.8f, 0.8f, 0.8f, 1.0f);
 	model.modelParts[0].material.specular = XMFLOAT4(0.2f, 0.2f, 0.2f, 16.0f);
-	model.modelParts[0].material.Reflect = XMFLOAT4();
+	model.modelParts[0].material.reflect = XMFLOAT4();
 	model.modelParts[0].texDiffuse = texDiffuse;
 	m_CylinderT.SetModel(std::move(model));
+	m_CylinderT.ResizeBuffer(m_pd3dDevice.Get(), 5);
 
 	// ******************
-	// ³õÊ¼»¯ÉãÏñ»ú
+	// åˆå§‹åŒ–æ‘„åƒæœº
 	//
 	auto camera = std::shared_ptr<FirstPersonCamera>(new FirstPersonCamera);
 	m_pCamera = camera;
@@ -316,20 +320,20 @@ bool GameApp::InitResource()
 		XMVectorSet(0.0f, 0.0f, -10.0f, 1.0f),
 		XMVectorSet(0.0f, 0.0f, 1.0f, 1.0f),
 		XMVectorSet(0.0f, 1.0f, 0.0f, 0.0f));
-	// ³õÊ¼»¯²¢¸üĞÂ¹Û²ì¾ØÕó¡¢Í¶Ó°¾ØÕó(ÉãÏñ»ú½«±»¹Ì¶¨)
+	// åˆå§‹åŒ–å¹¶æ›´æ–°è§‚å¯ŸçŸ©é˜µã€æŠ•å½±çŸ©é˜µ(æ‘„åƒæœºå°†è¢«å›ºå®š)
 	camera->UpdateViewMatrix();
 	m_BasicEffect.SetViewMatrix(camera->GetViewXM());
 	m_BasicEffect.SetProjMatrix(camera->GetProjXM());
 
 
 	// ******************
-	// ³õÊ¼»¯²»»á±ä»¯µÄÖµ
+	// åˆå§‹åŒ–ä¸ä¼šå˜åŒ–çš„å€¼
 	//
 
-	// ·½Ïò¹â
+	// æ–¹å‘å…‰
 	DirectionalLight dirLight[4];
 	dirLight[0].ambient = XMFLOAT4(0.15f, 0.15f, 0.15f, 1.0f);
-	dirLight[0].diffuse = XMFLOAT4(0.3f, 0.3f, 0.3f, 1.0f);
+	dirLight[0].diffuse = XMFLOAT4(0.5f, 0.5f, 0.5f, 1.0f);
 	dirLight[0].specular = XMFLOAT4(0.1f, 0.1f, 0.1f, 1.0f);
 	dirLight[0].direction = XMFLOAT3(-0.577f, -0.577f, 0.577f);
 	dirLight[1] = dirLight[0];
@@ -341,44 +345,55 @@ bool GameApp::InitResource()
 	for (int i = 0; i < 4; ++i)
 		m_BasicEffect.SetDirLight(i, dirLight[i]);
 
+	// ******************
+	// è®¾ç½®è°ƒè¯•å¯¹è±¡å
+	//
+	m_Cylinder.SetDebugObjectName("Cylinder");
+	m_CylinderT.SetDebugObjectName("CylinderT");
+	m_Ground.SetDebugObjectName("Ground");
+	m_GroundT.SetDebugObjectName("GroundT");
+	m_Sphere.SetDebugObjectName("Sphere");
+	m_pDaylight->SetDebugObjectName("DayLight");
+	
+
 	return true;
 }
 
 void GameApp::DrawScene(bool drawCenterSphere)
 {
-	// »æÖÆÄ£ĞÍ
-	m_BasicEffect.SetRenderDefault(m_pd3dImmediateContext, BasicEffect::RenderObject);
+	// ç»˜åˆ¶æ¨¡å‹
+	m_BasicEffect.SetRenderDefault(m_pd3dImmediateContext.Get(), BasicEffect::RenderObject);
 	m_BasicEffect.SetTextureUsed(true);
 	
-	// Ö»»æÖÆÇòÌåµÄ·´ÉäĞ§¹û
+	// åªç»˜åˆ¶çƒä½“çš„åå°„æ•ˆæœ
 	if (drawCenterSphere)
 	{
 		m_BasicEffect.SetReflectionEnabled(true);
 		m_BasicEffect.SetRefractionEnabled(false);
-		m_Sphere.Draw(m_pd3dImmediateContext, m_BasicEffect);
+		m_Sphere.Draw(m_pd3dImmediateContext.Get(), m_BasicEffect);
 	}
 	
-	// »æÖÆµØÃæ
+	// ç»˜åˆ¶åœ°é¢
 	m_BasicEffect.SetReflectionEnabled(false);
 	m_BasicEffect.SetRefractionEnabled(false);
 	
 	if (m_EnableNormalMap)
 	{
-		m_BasicEffect.SetRenderWithNormalMap(m_pd3dImmediateContext, BasicEffect::RenderObject);
+		m_BasicEffect.SetRenderWithNormalMap(m_pd3dImmediateContext.Get(), BasicEffect::RenderObject);
 		if (m_GroundMode == GroundMode::Floor)
-			m_BasicEffect.SetTextureNormalMap(m_FloorNormalMap);
+			m_BasicEffect.SetTextureNormalMap(m_FloorNormalMap.Get());
 		else
-			m_BasicEffect.SetTextureNormalMap(m_StonesNormalMap);
-		m_GroundT.Draw(m_pd3dImmediateContext, m_BasicEffect);
+			m_BasicEffect.SetTextureNormalMap(m_StonesNormalMap.Get());
+		m_GroundT.Draw(m_pd3dImmediateContext.Get(), m_BasicEffect);
 	}
 	else
 	{
-		m_BasicEffect.SetRenderDefault(m_pd3dImmediateContext, BasicEffect::RenderObject);
-		m_Ground.Draw(m_pd3dImmediateContext, m_BasicEffect);
+		m_BasicEffect.SetRenderDefault(m_pd3dImmediateContext.Get(), BasicEffect::RenderObject);
+		m_Ground.Draw(m_pd3dImmediateContext.Get(), m_BasicEffect);
 	}
 
-	// »æÖÆÎå¸öÔ²Öù
-	// ĞèÒª¹Ì¶¨Î»ÖÃ
+	// ç»˜åˆ¶äº”ä¸ªåœ†æŸ±
+	// éœ€è¦å›ºå®šä½ç½®
 	static std::vector<XMMATRIX> cyliderWorlds = {
 		XMMatrixTranslation(0.0f, -1.99f, 0.0f),
 		XMMatrixTranslation(4.5f, -1.99f, 4.5f),
@@ -389,37 +404,35 @@ void GameApp::DrawScene(bool drawCenterSphere)
 
 	if (m_EnableNormalMap)
 	{
-		m_BasicEffect.SetRenderWithNormalMap(m_pd3dImmediateContext, BasicEffect::RenderInstance);
-		m_BasicEffect.SetTextureNormalMap(m_BricksNormalMap);
-		m_CylinderT.DrawInstanced(m_pd3dImmediateContext, m_BasicEffect, cyliderWorlds);
+		m_BasicEffect.SetRenderWithNormalMap(m_pd3dImmediateContext.Get(), BasicEffect::RenderInstance);
+		m_BasicEffect.SetTextureNormalMap(m_BricksNormalMap.Get());
+		m_CylinderT.DrawInstanced(m_pd3dImmediateContext.Get(), m_BasicEffect, cyliderWorlds);
 	}
 	else
 	{
-		m_BasicEffect.SetRenderDefault(m_pd3dImmediateContext, BasicEffect::RenderInstance);
-		m_Cylinder.DrawInstanced(m_pd3dImmediateContext, m_BasicEffect, cyliderWorlds);
+		m_BasicEffect.SetRenderDefault(m_pd3dImmediateContext.Get(), BasicEffect::RenderInstance);
+		m_Cylinder.DrawInstanced(m_pd3dImmediateContext.Get(), m_BasicEffect, cyliderWorlds);
 	}
 	
-	// »æÖÆÎå¸öÔ²Çò
-	m_BasicEffect.SetRenderDefault(m_pd3dImmediateContext, BasicEffect::RenderInstance);
-	static float rad = 0.0f;
-	rad += 0.001f;
-	// ĞèÒª¶¯Ì¬Î»ÖÃ£¬²»Ê¹ÓÃstatic
-	std::vector<XMMATRIX> sphereWorlds = {
-		XMMatrixScaling(0.5f, 0.5f, 0.5f) * XMMatrixTranslation(4.5f, 0.5f * XMScalarSin(rad), 4.5f),
-		XMMatrixScaling(0.5f, 0.5f, 0.5f) * XMMatrixTranslation(-4.5f, 0.5f * XMScalarSin(rad), 4.5f),
-		XMMatrixScaling(0.5f, 0.5f, 0.5f) * XMMatrixTranslation(-4.5f, 0.5f * XMScalarSin(rad), -4.5f),
-		XMMatrixScaling(0.5f, 0.5f, 0.5f) * XMMatrixTranslation(4.5f, 0.5f * XMScalarSin(rad), -4.5f),
-		XMMatrixScaling(0.5f, 0.5f, 0.5f) * XMMatrixTranslation(2.5f * XMScalarCos(rad), 0.0f, 2.5f * XMScalarSin(rad))
-	};
-	m_Sphere.DrawInstanced(m_pd3dImmediateContext, m_BasicEffect, sphereWorlds);
+	// ç»˜åˆ¶äº”ä¸ªåœ†çƒ
+	m_BasicEffect.SetRenderDefault(m_pd3dImmediateContext.Get(), BasicEffect::RenderInstance);
 
-	// »æÖÆÌì¿ÕºĞ
-	m_SkyEffect.SetRenderDefault(m_pd3dImmediateContext);
+	std::vector<XMMATRIX> sphereWorlds = {
+		XMMatrixScaling(0.5f, 0.5f, 0.5f) * XMMatrixTranslation(4.5f, 0.5f * XMScalarSin(m_SphereRad), 4.5f),
+		XMMatrixScaling(0.5f, 0.5f, 0.5f) * XMMatrixTranslation(-4.5f, 0.5f * XMScalarSin(m_SphereRad), 4.5f),
+		XMMatrixScaling(0.5f, 0.5f, 0.5f) * XMMatrixTranslation(-4.5f, 0.5f * XMScalarSin(m_SphereRad), -4.5f),
+		XMMatrixScaling(0.5f, 0.5f, 0.5f) * XMMatrixTranslation(4.5f, 0.5f * XMScalarSin(m_SphereRad), -4.5f),
+		XMMatrixScaling(0.5f, 0.5f, 0.5f) * XMMatrixTranslation(2.5f * XMScalarCos(m_SphereRad), 0.0f, 2.5f * XMScalarSin(m_SphereRad))
+	};
+	m_Sphere.DrawInstanced(m_pd3dImmediateContext.Get(), m_BasicEffect, sphereWorlds);
+
+	// ç»˜åˆ¶å¤©ç©ºç›’
+	m_SkyEffect.SetRenderDefault(m_pd3dImmediateContext.Get());
 
 	if (drawCenterSphere)
-		m_pDaylight->Draw(m_pd3dImmediateContext, m_SkyEffect, *m_pCamera);
+		m_pDaylight->Draw(m_pd3dImmediateContext.Get(), m_SkyEffect, *m_pCamera);
 	else
-		m_pDaylight->Draw(m_pd3dImmediateContext, m_SkyEffect, m_pDaylight->GetCamera());
+		m_pDaylight->Draw(m_pd3dImmediateContext.Get(), m_SkyEffect, m_pDaylight->GetCamera());
 	
 }
 

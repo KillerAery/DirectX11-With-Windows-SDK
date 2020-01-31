@@ -2,7 +2,6 @@
 #include "d3dUtil.h"
 #include "DXTrace.h"
 using namespace DirectX;
-using namespace std::experimental;
 
 GameApp::GameApp(HINSTANCE hInstance)
 	: D3DApp(hInstance)
@@ -28,11 +27,12 @@ void GameApp::Compute()
 {
 	assert(m_pd3dImmediateContext);
 
-	//#if defined(DEBUG) | defined(_DEBUG)
-	//	ComPtr<IDXGraphicsAnalysis> graphicsAnalysis;
-	//	HR(DXGIGetDebugInterface1(0, __uuidof(graphicsAnalysis.Get()), reinterpret_cast<void**>(graphicsAnalysis.GetAddressOf())));
-	//	graphicsAnalysis->BeginCapture();
-	//#endif
+//#if defined(DEBUG) | defined(_DEBUG)
+//	ComPtr<IDXGraphicsAnalysis> graphicsAnalysis;
+//	HR(DXGIGetDebugInterface1(0, __uuidof(graphicsAnalysis.Get()), reinterpret_cast<void**>(graphicsAnalysis.GetAddressOf())));
+//	graphicsAnalysis->BeginCapture();
+//#endif
+
 	m_pd3dImmediateContext->CSSetShaderResources(0, 1, m_pTextureInputA.GetAddressOf());
 	m_pd3dImmediateContext->CSSetShaderResources(1, 1, m_pTextureInputB.GetAddressOf());
 
@@ -49,14 +49,14 @@ void GameApp::Compute()
 	m_pd3dImmediateContext->Dispatch(32, 32, 1);
 
 
-	//#if defined(DEBUG) | defined(_DEBUG)
-	//	graphicsAnalysis->EndCapture();
-	//#endif
+//#if defined(DEBUG) | defined(_DEBUG)
+//	graphicsAnalysis->EndCapture();
+//#endif
 
 	HR(SaveDDSTextureToFile(m_pd3dImmediateContext.Get(), m_pTextureOutputA.Get(), L"Texture\\flareoutputA.dds"));
 	HR(SaveDDSTextureToFile(m_pd3dImmediateContext.Get(), m_pTextureOutputB.Get(), L"Texture\\flareoutputB.dds"));
 	
-	MessageBox(nullptr, L"Çë´ò¿ªTextureÎÄ¼ş¼Ğ¹Û²ìÊä³öÎÄ¼şflareoutputA.ddsºÍflareoutputB.dds", L"ÔËĞĞ½áÊø", MB_OK);
+	MessageBox(nullptr, L"è¯·æ‰“å¼€Textureæ–‡ä»¶å¤¹è§‚å¯Ÿè¾“å‡ºæ–‡ä»¶flareoutputA.ddså’ŒflareoutputB.dds", L"è¿è¡Œç»“æŸ", MB_OK);
 }
 
 bool GameApp::InitResource()
@@ -67,7 +67,7 @@ bool GameApp::InitResource()
 	HR(CreateDDSTextureFromFile(m_pd3dDevice.Get(), L"Texture\\flarealpha.dds",
 		nullptr, m_pTextureInputB.GetAddressOf()));
 	
-	// ´´½¨ÓÃÓÚUAVµÄÎÆÀí£¬±ØĞëÊÇ·ÇÑ¹Ëõ¸ñÊ½
+	// åˆ›å»ºç”¨äºUAVçš„çº¹ç†ï¼Œå¿…é¡»æ˜¯éå‹ç¼©æ ¼å¼
 	D3D11_TEXTURE2D_DESC texDesc;
 	texDesc.Width = 512;
 	texDesc.Height = 512;
@@ -87,7 +87,7 @@ bool GameApp::InitResource()
 	texDesc.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
 	HR(m_pd3dDevice->CreateTexture2D(&texDesc, nullptr, m_pTextureOutputB.GetAddressOf()));
 
-	// ´´½¨ÎŞĞò·ÃÎÊÊÓÍ¼
+	// åˆ›å»ºæ— åºè®¿é—®è§†å›¾
 	D3D11_UNORDERED_ACCESS_VIEW_DESC uavDesc;
 	uavDesc.Format = DXGI_FORMAT_R32G32B32A32_FLOAT;
 	uavDesc.ViewDimension = D3D11_UAV_DIMENSION_TEXTURE2D;
@@ -99,7 +99,7 @@ bool GameApp::InitResource()
 	HR(m_pd3dDevice->CreateUnorderedAccessView(m_pTextureOutputB.Get(), &uavDesc,
 		m_pTextureOutputB_UAV.GetAddressOf()));
 
-	// ´´½¨¼ÆËã×ÅÉ«Æ÷
+	// åˆ›å»ºè®¡ç®—ç€è‰²å™¨
 	ComPtr<ID3DBlob> blob;
 	HR(CreateShaderFromFile(L"HLSL\\TextureMul_R32G32B32A32_CS.cso",
 		L"HLSL\\TextureMul_R32G32B32A32_CS.hlsl", "CS", "cs_5_0", blob.GetAddressOf()));
@@ -122,14 +122,22 @@ bool GameApp::InitResource()
 	HR(m_pd3dDevice->CreateBuffer(&inputDesc, nullptr, mBuffer.GetAddressOf()));
 
 	D3D11_SHADER_RESOURCE_VIEW_DESC srvDesc;
-	srvDesc.Format = DXGI_FORMAT_R32_TYPELESS;		// ×Ö½ÚµØÖ·»º³åÇø±ØĞëÊ¹ÓÃ¸ÃÀàĞÍ
+	srvDesc.Format = DXGI_FORMAT_R32_TYPELESS;		// å­—èŠ‚åœ°å€ç¼“å†²åŒºå¿…é¡»ä½¿ç”¨è¯¥ç±»å‹
 	srvDesc.ViewDimension = D3D11_SRV_DIMENSION_BUFFEREX;
 	srvDesc.BufferEx.Flags = D3D11_BUFFEREX_SRV_FLAG_RAW;
-	srvDesc.BufferEx.FirstElement = 0;		// ÆğÊ¼×Ö½ÚÆ«ÒÆÖµ
-	srvDesc.BufferEx.NumElements = numElements;		// ×Ö½ÚÊı
+	srvDesc.BufferEx.FirstElement = 0;		// èµ·å§‹å­—èŠ‚åç§»å€¼
+	srvDesc.BufferEx.NumElements = numElements;		// å­—èŠ‚æ•°
 
 	ComPtr<ID3D11ShaderResourceView> mBufferSRV;
 	HR(m_pd3dDevice->CreateShaderResourceView(mBuffer.Get(), &srvDesc, mBufferSRV.GetAddressOf()));
+
+	// ******************
+	// è®¾ç½®è°ƒè¯•å¯¹è±¡å
+	//
+	D3D11SetDebugObjectName(m_pTextureOutputA_UAV.Get(), "Output_R32G32B32A32");
+	D3D11SetDebugObjectName(m_pTextureOutputB_UAV.Get(), "Output_R8G8B8A8");
+	D3D11SetDebugObjectName(m_pTextureMul_R8G8B8A8_CS.Get(), "TextureMul_R8G8B8A8_CS");
+	D3D11SetDebugObjectName(m_pTextureMul_R32G32B32A32_CS.Get(), "TextureMul_R32G32B32A32_CS");
 
 	return true;
 }

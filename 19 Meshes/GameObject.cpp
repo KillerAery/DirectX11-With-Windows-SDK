@@ -64,25 +64,30 @@ void XM_CALLCONV GameObject::SetWorldMatrix(FXMMATRIX world)
 	XMStoreFloat4x4(&m_WorldMatrix, world);
 }
 
-void GameObject::Draw(ComPtr<ID3D11DeviceContext> deviceContext, BasicEffect & effect)
+void GameObject::Draw(ID3D11DeviceContext * deviceContext, BasicEffect & effect)
 {
 	UINT strides = m_Model.vertexStride;
 	UINT offsets = 0;
 
 	for (auto& part : m_Model.modelParts)
 	{
-		// ÉèÖÃ¶¥µã/Ë÷Òý»º³åÇø
+		// è®¾ç½®é¡¶ç‚¹/ç´¢å¼•ç¼“å†²åŒº
 		deviceContext->IASetVertexBuffers(0, 1, part.vertexBuffer.GetAddressOf(), &strides, &offsets);
 		deviceContext->IASetIndexBuffer(part.indexBuffer.Get(), part.indexFormat, 0);
 
-		// ¸üÐÂÊý¾Ý²¢Ó¦ÓÃ
+		// æ›´æ–°æ•°æ®å¹¶åº”ç”¨
 		effect.SetWorldMatrix(XMLoadFloat4x4(&m_WorldMatrix));
-		effect.SetTextureDiffuse(part.texDiffuse);
+		effect.SetTextureDiffuse(part.texDiffuse.Get());
 		effect.SetMaterial(part.material);
 		
 		effect.Apply(deviceContext);
 
 		deviceContext->DrawIndexed(part.indexCount, 0, 0);
 	}
+}
+
+void GameObject::SetDebugObjectName(const std::string& name)
+{
+	m_Model.SetDebugObjectName(name);
 }
 

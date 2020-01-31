@@ -10,12 +10,12 @@ struct InstancedData
 };
 
 GameObject::GameObject()
-	: m_Capacity(), 
+	: m_Capacity(),
 	m_WorldMatrix(
 		1.0f, 0.0f, 0.0f, 0.0f,
 		0.0f, 1.0f, 0.0f, 0.0f,
 		0.0f, 0.0f, 1.0f, 0.0f,
-		0.0f, 0.0f, 0.0f, 1.0f)	
+		0.0f, 0.0f, 0.0f, 1.0f)
 {
 }
 
@@ -50,38 +50,38 @@ size_t GameObject::GetCapacity() const
 	return m_Capacity;
 }
 
-void GameObject::ResizeBuffer(ComPtr<ID3D11Device> device, size_t count)
+void GameObject::ResizeBuffer(ID3D11Device* device, size_t count)
 {
-	// …Ë÷√ µ¿˝ª∫≥Â«¯√Ë ˆ
+	// ËÆæÁΩÆÂÆû‰æãÁºìÂÜ≤Âå∫ÊèèËø∞
 	D3D11_BUFFER_DESC vbd;
 	ZeroMemory(&vbd, sizeof(vbd));
 	vbd.Usage = D3D11_USAGE_DYNAMIC;
 	vbd.ByteWidth = (UINT)count * sizeof(InstancedData);
 	vbd.BindFlags = D3D11_BIND_VERTEX_BUFFER;
 	vbd.CPUAccessFlags = D3D11_CPU_ACCESS_WRITE;
-	// ¥¥Ω® µ¿˝ª∫≥Â«¯
+	// ÂàõÂª∫ÂÆû‰æãÁºìÂÜ≤Âå∫
 	HR(device->CreateBuffer(&vbd, nullptr, m_pInstancedBuffer.ReleaseAndGetAddressOf()));
 
-	// ÷ÿ–¬µ˜’˚m_Capacity
+	// ÈáçÊñ∞Ë∞ÉÊï¥m_Capacity
 	m_Capacity = count;
 }
 
 
 
 
-void GameObject::SetModel(Model && model)
+void GameObject::SetModel(Model&& model)
 {
 	std::swap(m_Model, model);
 	model.modelParts.clear();
 	model.boundingBox = BoundingBox();
 }
 
-void GameObject::SetModel(const Model & model)
+void GameObject::SetModel(const Model& model)
 {
 	m_Model = model;
 }
 
-void GameObject::SetWorldMatrix(const XMFLOAT4X4 & world)
+void GameObject::SetWorldMatrix(const XMFLOAT4X4& world)
 {
 	m_WorldMatrix = world;
 }
@@ -91,47 +91,47 @@ void XM_CALLCONV GameObject::SetWorldMatrix(FXMMATRIX world)
 	XMStoreFloat4x4(&m_WorldMatrix, world);
 }
 
-void GameObject::Draw(ComPtr<ID3D11DeviceContext> deviceContext, BasicEffect & effect)
+void GameObject::Draw(ID3D11DeviceContext* deviceContext, BasicEffect& effect)
 {
 	UINT strides = m_Model.vertexStride;
 	UINT offsets = 0;
 
 	for (auto& part : m_Model.modelParts)
 	{
-		// …Ë÷√∂•µ„/À˜“˝ª∫≥Â«¯
+		// ËÆæÁΩÆÈ°∂ÁÇπ/Á¥¢ÂºïÁºìÂÜ≤Âå∫
 		deviceContext->IASetVertexBuffers(0, 1, part.vertexBuffer.GetAddressOf(), &strides, &offsets);
 		deviceContext->IASetIndexBuffer(part.indexBuffer.Get(), part.indexFormat, 0);
 
-		// ∏¸–¬ ˝æ›≤¢”¶”√
+		// Êõ¥Êñ∞Êï∞ÊçÆÂπ∂Â∫îÁî®
 		effect.SetWorldMatrix(XMLoadFloat4x4(&m_WorldMatrix));
-		effect.SetTextureDiffuse(part.texDiffuse);
+		effect.SetTextureDiffuse(part.texDiffuse.Get());
 		effect.SetMaterial(part.material);
-		
+
 		effect.Apply(deviceContext);
 
 		deviceContext->DrawIndexed(part.indexCount, 0, 0);
 	}
 }
 
-void GameObject::DrawInstanced(ComPtr<ID3D11DeviceContext> deviceContext, BasicEffect & effect, const std::vector<DirectX::XMMATRIX>& data)
+void GameObject::DrawInstanced(ID3D11DeviceContext* deviceContext, BasicEffect& effect, const std::vector<DirectX::XMMATRIX>& data)
 {
 	D3D11_MAPPED_SUBRESOURCE mappedData;
 	UINT numInsts = (UINT)data.size();
-	// »Ù¥´»Îµƒ ˝æ›±» µ¿˝ª∫≥Â«¯ªπ¥Û£¨–Ë“™÷ÿ–¬∑÷≈‰
+	// Ëã•‰º†ÂÖ•ÁöÑÊï∞ÊçÆÊØîÂÆû‰æãÁºìÂÜ≤Âå∫ËøòÂ§ßÔºåÈúÄË¶ÅÈáçÊñ∞ÂàÜÈÖç
 	if (numInsts > m_Capacity)
 	{
 		ComPtr<ID3D11Device> device;
 		deviceContext->GetDevice(device.GetAddressOf());
-		ResizeBuffer(device, numInsts);
+		ResizeBuffer(device.Get(), numInsts);
 	}
 
 	HR(deviceContext->Map(m_pInstancedBuffer.Get(), 0, D3D11_MAP_WRITE_DISCARD, 0, &mappedData));
 
-	InstancedData * iter = reinterpret_cast<InstancedData *>(mappedData.pData);
+	InstancedData* iter = reinterpret_cast<InstancedData*>(mappedData.pData);
 	for (auto& mat : data)
 	{
 		iter->world = XMMatrixTranspose(mat);
-		iter->worldInvTranspose = XMMatrixInverse(nullptr, mat);	// ¡Ω¥Œ◊™÷√µ÷œ˚
+		iter->worldInvTranspose = XMMatrixInverse(nullptr, mat);	// ‰∏§Ê¨°ËΩ¨ÁΩÆÊäµÊ∂à
 		iter++;
 	}
 
@@ -139,21 +139,35 @@ void GameObject::DrawInstanced(ComPtr<ID3D11DeviceContext> deviceContext, BasicE
 
 	UINT strides[2] = { m_Model.vertexStride, sizeof(InstancedData) };
 	UINT offsets[2] = { 0, 0 };
-	ID3D11Buffer * buffers[2] = { nullptr, m_pInstancedBuffer.Get() };
+	ID3D11Buffer* buffers[2] = { nullptr, m_pInstancedBuffer.Get() };
 	for (auto& part : m_Model.modelParts)
 	{
 		buffers[0] = part.vertexBuffer.Get();
 
-		// …Ë÷√∂•µ„/À˜“˝ª∫≥Â«¯
+		// ËÆæÁΩÆÈ°∂ÁÇπ/Á¥¢ÂºïÁºìÂÜ≤Âå∫
 		deviceContext->IASetVertexBuffers(0, 2, buffers, strides, offsets);
 		deviceContext->IASetIndexBuffer(part.indexBuffer.Get(), part.indexFormat, 0);
 
-		// ∏¸–¬ ˝æ›≤¢”¶”√
-		effect.SetTextureDiffuse(part.texDiffuse);
+		// Êõ¥Êñ∞Êï∞ÊçÆÂπ∂Â∫îÁî®
+		effect.SetTextureDiffuse(part.texDiffuse.Get());
 		effect.SetMaterial(part.material);
 		effect.Apply(deviceContext);
 
 		deviceContext->DrawIndexedInstanced(part.indexCount, numInsts, 0, 0, 0);
 	}
 }
+
+void GameObject::SetDebugObjectName(const std::string& name)
+{
+#if (defined(DEBUG) || defined(_DEBUG)) && (GRAPHICS_DEBUGGER_OBJECT_NAME)
+
+	m_Model.SetDebugObjectName(name);
+	if (m_pInstancedBuffer)
+	{
+		D3D11SetDebugObjectName(m_pInstancedBuffer.Get(), name + ".InstancedBuffer");
+	}
+
+#endif
+}
+
 

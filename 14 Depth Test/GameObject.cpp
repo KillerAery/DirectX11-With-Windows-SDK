@@ -3,7 +3,10 @@
 using namespace DirectX;
 
 GameObject::GameObject()
-	: m_WorldMatrix(
+	: m_IndexCount(),
+	m_Material(),
+	m_VertexStride(),
+	m_WorldMatrix(
 		1.0f, 0.0f, 0.0f, 0.0f,
 		0.0f, 1.0f, 0.0f, 0.0f,
 		0.0f, 0.0f, 1.0f, 0.0f,
@@ -19,7 +22,7 @@ DirectX::XMFLOAT3 GameObject::GetPosition() const
 
 
 
-void GameObject::SetTexture(ComPtr<ID3D11ShaderResourceView> texture)
+void GameObject::SetTexture(ID3D11ShaderResourceView * texture)
 {
 	m_pTexture = texture;
 }
@@ -39,19 +42,30 @@ void XM_CALLCONV GameObject::SetWorldMatrix(FXMMATRIX world)
 	XMStoreFloat4x4(&m_WorldMatrix, world);
 }
 
-void GameObject::Draw(ComPtr<ID3D11DeviceContext> deviceContext, BasicEffect& effect)
+void GameObject::Draw(ID3D11DeviceContext * deviceContext, BasicEffect& effect)
 {
-	// ÉèÖÃ¶¥µã/Ë÷Òý»º³åÇø
+	// è®¾ç½®é¡¶ç‚¹/ç´¢å¼•ç¼“å†²åŒº
 	UINT strides = m_VertexStride;
 	UINT offsets = 0;
 	deviceContext->IASetVertexBuffers(0, 1, m_pVertexBuffer.GetAddressOf(), &strides, &offsets);
-	deviceContext->IASetIndexBuffer(m_pIndexBuffer.Get(), DXGI_FORMAT_R16_UINT, 0);
+	deviceContext->IASetIndexBuffer(m_pIndexBuffer.Get(), DXGI_FORMAT_R32_UINT, 0);
 
-	// ¸üÐÂÊý¾Ý²¢Ó¦ÓÃ
+	// æ›´æ–°æ•°æ®å¹¶åº”ç”¨
 	effect.SetWorldMatrix(XMLoadFloat4x4(&m_WorldMatrix));
-	effect.SetTexture(m_pTexture);
+	effect.SetTexture(m_pTexture.Get());
 	effect.SetMaterial(m_Material);
 	effect.Apply(deviceContext);
 
 	deviceContext->DrawIndexed(m_IndexCount, 0, 0);
 }
+
+void GameObject::SetDebugObjectName(const std::string& name)
+{
+#if (defined(DEBUG) || defined(_DEBUG)) && (GRAPHICS_DEBUGGER_OBJECT_NAME)
+	D3D11SetDebugObjectName(m_pVertexBuffer.Get(), name + ".VertexBuffer");
+	D3D11SetDebugObjectName(m_pIndexBuffer.Get(), name + ".IndexBuffer");
+#else
+	UNREFERENCED_PARAMETER(name);
+#endif
+}
+
